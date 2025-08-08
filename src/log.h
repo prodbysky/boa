@@ -19,6 +19,13 @@ typedef enum {
 
 #define ANSI_RESET "\033[0m"
 
-void log_message(LogLevel level, const char *format, ...);
+#define log_message(level, fmt, ...) \
+    log_message_(level, fmt, __func__, __FILE__, __LINE__, ##__VA_ARGS__)
 
+void log_message_(LogLevel level,
+                  const char *format,
+                  const char *function,
+                  const char *file,
+                  size_t line,
+                  ...);
 #endif

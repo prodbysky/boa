@@ -1,6 +1,12 @@
 #include "log.h"
 
-void log_message(LogLevel level, const char *format, ...) {
+
+void log_message_(LogLevel level,
+                  const char *format,
+                  const char *function,
+                  const char *file,
+                  size_t line,
+                  ...) {
     char *log_level = ANSI_GRAY"UNKNOWN"ANSI_RESET;
     switch (level) {
         case LL_INFO: log_level = ANSI_BLUE"INFO"ANSI_RESET; break;
@@ -8,9 +14,9 @@ void log_message(LogLevel level, const char *format, ...) {
         case LL_ERROR: log_level = ANSI_RED"ERROR"ANSI_RESET; break;
     }
 
-    fprintf(stderr, "[%s]: ", log_level);
+    fprintf(stderr, "[%s] (%s:%s:%lu): ", log_level, file, function, line);
     va_list ap;
-    va_start(ap, format);
+    va_start(ap, line);
     vfprintf(stderr, format, ap);
     va_end(ap);
     fputc('\n', stderr);

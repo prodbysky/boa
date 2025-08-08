@@ -4,18 +4,10 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include "sv.h"
+#include "lexer.h"
 
 static void usage(char* program_name);
-
-
-#define STR_FMT "%.*s"
-#define STR_ARG(s) (int)(s).count, (s).items
-
-typedef struct {
-    char* items;
-    size_t count;
-    size_t capacity;
-} String;
 
 /*
  * Argument `file_name`: input file name (null-terminated C-str)
@@ -23,6 +15,7 @@ typedef struct {
  * Return: indicates failure (where false is failed read operation)
 */
 bool read_file(const char* file_name, String* s);
+
 
 int main(int argc, char **argv) {
     // TODO: Unhardcode the argument parsing
@@ -34,9 +27,11 @@ int main(int argc, char **argv) {
     char* input_name = argv[1];
 
     String s = {0};
-
     if (!read_file(input_name, &s)) return 1;
-    log_message(LL_INFO, STR_FMT, STR_ARG(s));
+    Lexer l = {.src = SV(s), .begin_of_src = s.items};
+    while (!lexer_is_empty(&l)) {
+        log_message(LL_INFO, "%c", lexer_consume(&l));
+    }
 }
 
 static void usage(char* program_name) {

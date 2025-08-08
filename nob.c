@@ -4,7 +4,7 @@
 
 #define BUILD_DIR "build"
 
-#define SOURCES "src/log.c"
+#define SOURCES "src/log.c", "src/lexer.c"
 
 void common_flags(Cmd* cmd);
 
@@ -23,5 +23,5 @@ int main(int argc, char *argv[]) {
 }
 
 void common_flags(Cmd* cmd) {
-    cmd_append(cmd, "-Wall", "-Wextra", "-Werror", "-std=c17", "-pedantic", "-O3", "-g");
+    cmd_append(cmd, "-Wall", "-Wextra", "-Werror", "-std=c17", "-O3", "-g");
 }
