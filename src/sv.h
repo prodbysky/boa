@@ -1,12 +1,16 @@
 #ifndef SV_H_
 #define SV_H_
 #include <stddef.h>
+#include <string.h>
 
 #define STR_FMT "%.*s"
 #define STR_ARG(s) (int)(s).count, (s).items
 
 /// Takes a `String` and makes a `StringView`
 #define SV(s) (StringView) {.items = (s).items, .count = (s).count}
+
+/// Takes a C string and makes a `StringView`
+#define SV_FROM_CSTR(s) (StringView) {.items = (s), .count = strlen((s))}
 
 typedef struct {
     char* items;
