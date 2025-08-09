@@ -31,7 +31,7 @@ bool lexer_run(Lexer *lexer, Tokens *out) {
                 Token t = {0};
                 t.type = TT_OPERATOR;
                 t.len = 1;
-                t.begin = lexer->src.items;
+                t.begin = lexer->file.src.items;
                 t.operator = char_to_op[(size_t)lexer_peek(lexer, 0)];
                 da_push(out, t);
                 lexer_consume(lexer);
@@ -48,13 +48,13 @@ bool lexer_run(Lexer *lexer, Tokens *out) {
 bool lexer_lex_number(Lexer *lexer, Token *out) {
     ASSERT(!lexer_is_empty(lexer), "The callee ensures this condition");
     ASSERT(isdigit(lexer_peek(lexer, 0)), "The callee ensures this condition");
-    const char *begin = lexer->src.items;
+    const char *begin = lexer->file.src.items;
     while (!lexer_is_empty(lexer) && isdigit(lexer_peek(lexer, 0))) lexer_consume(lexer);
-    const char *end = lexer->src.items;
+    const char *end = lexer->file.src.items;
     if (isalpha(*end)) {
         log_diagnostic(LL_ERROR, "You can't have numeric literal next to "
                                  "any alphabetic characters");
-        report_error(begin, end, lexer->begin_of_src, lexer->input_name);
+        report_error(begin, end, lexer->begin_of_src, lexer->file.name);
         return false;
     }
     out->type = TT_NUMBER;
@@ -66,21 +66,21 @@ bool lexer_lex_number(Lexer *lexer, Token *out) {
     return true;
 }
 
-bool lexer_is_empty(const Lexer *lexer) { return lexer->src.count == 0; }
+bool lexer_is_empty(const Lexer *lexer) { return lexer->file.src.count == 0; }
 
 char lexer_peek(const Lexer *lexer, size_t offset) {
-    if (lexer->src.count <= offset) {
+    if (lexer->file.src.count <= offset) {
         log_diagnostic(LL_ERROR, "Tried to access string outside of the valid range");
         return 0;
     }
-    return lexer->src.items[offset];
+    return lexer->file.src.items[offset];
 }
 
 char lexer_consume(Lexer *lexer) {
-    if (lexer->src.count == 0) return 0;
-    char c = lexer->src.items[0];
-    lexer->src.items++;
-    lexer->src.count--;
+    if (lexer->file.src.count == 0) return 0;
+    char c = lexer->file.src.items[0];
+    lexer->file.src.items++;
+    lexer->file.src.count--;
     return c;
 }
 

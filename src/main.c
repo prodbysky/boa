@@ -1,7 +1,7 @@
 #include "lexer.h"
 #include "log.h"
 #include "sv.h"
-#include <ctype.h>
+#include "util.h"
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -18,6 +18,12 @@ static void usage(char *program_name);
  */
 bool read_file(const char *file_name, String *s);
 
+bool read_source_file(const char *file_name, SourceFile *out);
+
+typedef struct {
+    TokensSlice tokens;
+} Parser;
+
 int main(int argc, char **argv) {
     // TODO: Unhardcode the argument parsing
     char *program_name = argv[0];
@@ -27,9 +33,9 @@ int main(int argc, char **argv) {
     }
     char *input_name = argv[1];
 
-    String s = {0};
-    if (!read_file(input_name, &s)) return 1;
-    Lexer l = {.src = SV(s), .begin_of_src = s.items};
+    SourceFile file = {0};
+    if (!read_source_file(input_name, &file)) return 1;
+    Lexer l = {.begin_of_src = file.src.items, .file = FILE_VIEW_FROM_FILE(file)};
     Tokens tokens = {0};
 
     if (!lexer_run(&l, &tokens)) {
@@ -41,6 +47,14 @@ int main(int argc, char **argv) {
 static void usage(char *program_name) {
     log_message(LL_INFO, "Usage: ");
     log_message(LL_INFO, "  %s <input.boa>", program_name);
+}
+bool read_source_file(const char *file_name, SourceFile *out) {
+    ASSERT(file_name, "Passed in NULL for the file name");
+    ASSERT(out, "Passed in NULL for the out source file parameter");
+
+    if (!read_file(file_name, &out->src)) return false;
+    out->name = file_name;
+    return true;
 }
 
 bool read_file(const char *file_name, String *s) {

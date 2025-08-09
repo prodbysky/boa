@@ -7,9 +7,8 @@
 #include <stddef.h>
 
 typedef struct {
-    StringView src;
+    SourceFileView file;
     const char* begin_of_src;
-    const char* input_name;
 } Lexer;
 
 typedef enum {
@@ -39,6 +38,11 @@ typedef struct {
     size_t count;
     size_t capacity;
 } Tokens;
+
+typedef struct {
+    Token* items;
+    size_t count;
+} TokensSlice;
 
 bool lexer_run(Lexer* lexer, Tokens* out);
 bool lexer_lex_number(Lexer* lexer, Token* out);

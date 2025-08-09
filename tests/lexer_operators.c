@@ -4,7 +4,7 @@
 
 int main() {
     char *src = "+ -/*";
-    Lexer l = {.begin_of_src = src, .input_name = "CONST", .src = SV_FROM_CSTR(src)};
+    Lexer l = {.begin_of_src = src, .file = {.name = "CONST", .src = SV_FROM_CSTR(src)}};
     Tokens out = {0};
     ASSERT(lexer_run(&l, &out), "The source code should be lexible without any errors");
 
