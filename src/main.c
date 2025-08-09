@@ -18,7 +18,6 @@ static void usage(char *program_name);
  */
 bool read_file(const char *file_name, String *s);
 
-
 int main(int argc, char **argv) {
     // TODO: Unhardcode the argument parsing
     char *program_name = argv[0];
@@ -49,8 +48,7 @@ bool read_file(const char *file_name, String *s) {
     memset(s, 0, sizeof(String));
     FILE *file = fopen(file_name, "r");
     if (file == NULL) {
-        log_message(LL_ERROR, "Failed to open file %s: %s", file_name,
-                    strerror(errno));
+        log_message(LL_ERROR, "Failed to open file %s: %s", file_name, strerror(errno));
         return false;
     }
 
