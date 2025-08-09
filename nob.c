@@ -15,6 +15,14 @@ void common_flags(Cmd *cmd);
 int main(int argc, char *argv[]) {
     NOB_GO_REBUILD_URSELF(argc, argv);
 
+    if (argc > 1 && strcmp(argv[1], "test")) {
+        if (!run_tests()) {
+            nob_log(NOB_ERROR, "Some tests failed. Go check the logs :)");
+            return 1;
+        }
+        return 0;
+    }
+
     Cmd cmd = {0};
 
     mkdir_if_not_exists(BUILD_DIR);
