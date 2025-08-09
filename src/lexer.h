@@ -18,7 +18,10 @@ typedef enum {
 } TokenType;
 
 typedef enum {
-    OT_PLUS
+    OT_PLUS,
+    OT_MINUS,
+    OT_MULT,
+    OT_DIV,
 } OperatorType;
 
 typedef struct {

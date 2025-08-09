@@ -4,6 +4,13 @@
 #include <ctype.h>
 #include <stdlib.h>
 
+static const OperatorType char_to_op[] = {
+    ['+'] = OT_PLUS,
+    ['-'] = OT_MINUS,
+    ['*'] = OT_MULT,
+    ['/'] = OT_DIV,
+};
+
 bool lexer_run(Lexer *lexer, Tokens *out) {
     ASSERT(lexer, "Passed null lexer");
     ASSERT(out, "Passed null tokens out array");
@@ -20,12 +27,12 @@ bool lexer_run(Lexer *lexer, Tokens *out) {
 
         switch (lexer_peek(lexer, 0)) {
             case 0: UNREACHABLE("The lexer can't be empty in here");
-            case '+': {
+            case '+': case '-': case '*': case '/': {
                 Token t = {0};
                 t.type = TT_OPERATOR;
                 t.len = 1;
                 t.begin = lexer->src.items;
-                t.operator = OT_PLUS;
+                t.operator = char_to_op[(size_t)lexer_peek(lexer, 0)];
                 da_push(out, t);
                 lexer_consume(lexer);
                 continue;
