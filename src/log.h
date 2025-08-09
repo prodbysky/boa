@@ -1,8 +1,8 @@
 #ifndef LOG_H_
 #define LOG_H_
 
-#include <stdio.h>
 #include <stdarg.h>
+#include <stdio.h>
 
 typedef enum {
     LL_INFO,
@@ -19,13 +19,15 @@ typedef enum {
 
 #define ANSI_RESET "\033[0m"
 
-#define log_message(level, fmt, ...) \
-    log_message_(level, fmt, __func__, __FILE__, __LINE__, ##__VA_ARGS__)
+/// for internal stuff
+#define log_message(level, fmt, ...)                                           \
+    log_message_(level, fmt, __FILE__, __LINE__, ##__VA_ARGS__)
 
-void log_message_(LogLevel level,
-                  const char *format,
-                  const char *function,
-                  const char *file,
-                  size_t line,
-                  ...);
+#define log_diagnostic(level, fmt, ...)                                        \
+    log_diagnostic_(level, fmt, ##__VA_ARGS__)
+
+void log_message_(LogLevel level, const char *format,
+                  const char *file, size_t line, ...);
+
+void log_diagnostic_(LogLevel level, const char *format, ...);
 #endif

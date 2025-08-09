@@ -1,51 +1,56 @@
-#include "log.h"
-#include <stdio.h>
-#include <errno.h>
-#include <string.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include "sv.h"
 #include "lexer.h"
+#include "log.h"
+#include "sv.h"
+#include <ctype.h>
+#include <errno.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-static void usage(char* program_name);
+static void usage(char *program_name);
 
 /*
  * Argument `file_name`: input file name (null-terminated C-str)
  * Argument `s`: output parameter which will be filled out
  * Return: indicates failure (where false is failed read operation)
-*/
-bool read_file(const char* file_name, String* s);
+ */
+bool read_file(const char *file_name, String *s);
 
 
 int main(int argc, char **argv) {
     // TODO: Unhardcode the argument parsing
-    char* program_name = argv[0];
+    char *program_name = argv[0];
     if (argc < 2) {
         usage(program_name);
         return 1;
     }
-    char* input_name = argv[1];
+    char *input_name = argv[1];
 
     String s = {0};
     if (!read_file(input_name, &s)) return 1;
     Lexer l = {.src = SV(s), .begin_of_src = s.items};
-    while (!lexer_is_empty(&l)) {
-        log_message(LL_INFO, "%c", lexer_consume(&l));
+    Tokens tokens = {0};
+
+    if (!lexer_run(&l, &tokens)) {
+        log_diagnostic(LL_ERROR, "Failed to lex source code");
+        return 1;
     }
 }
 
-static void usage(char* program_name) {
+static void usage(char *program_name) {
     log_message(LL_INFO, "Usage: ");
     log_message(LL_INFO, "  %s <input.boa>", program_name);
 }
 
-
-bool read_file(const char* file_name, String* s) {
+bool read_file(const char *file_name, String *s) {
     if (file_name == NULL) return false;
     memset(s, 0, sizeof(String));
-    FILE* file = fopen(file_name, "r");
+    FILE *file = fopen(file_name, "r");
     if (file == NULL) {
-        log_message(LL_ERROR, "Failed to open file %s: %s", file_name, strerror(errno));
+        log_message(LL_ERROR, "Failed to open file %s: %s", file_name,
+                    strerror(errno));
         return false;
     }
 
