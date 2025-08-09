@@ -2,6 +2,7 @@
 #define UTIL_H_
 
 #include <stdlib.h>
+#include "../src/log.h"
 
 #define TODO()                                                                                                         \
     do {                                                                                                               \
