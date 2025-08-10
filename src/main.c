@@ -1,9 +1,9 @@
 #include "arena.h"
 #include "lexer.h"
 #include "log.h"
+#include "parser.h"
 #include "sv.h"
 #include "util.h"
-#include "parser.h"
 
 #include <errno.h>
 #include <stdbool.h>
@@ -22,8 +22,6 @@ static void usage(char *program_name);
  */
 bool read_file(const char *file_name, String *s);
 bool read_source_file(const char *file_name, SourceFile *out);
-
-
 
 int main(int argc, char **argv) {
     // TODO: Unhardcode the argument parsing
