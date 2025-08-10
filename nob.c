@@ -8,6 +8,11 @@
 
 #define SOURCES "src/log.c", "src/lexer.c", "src/arena.c", "src/parser.c"
 
+#ifdef _WIN32
+    // @sa.pohod ty <3
+    #error "Your Windows version is too old for this software.\nGet up to date at https://kernel.org !";
+#endif
+
 void common_flags(Cmd *cmd);
 
 [[nodiscard]] bool run_tests();
@@ -15,9 +20,6 @@ void common_flags(Cmd *cmd);
 int main(int argc, char *argv[]) {
     NOB_GO_REBUILD_URSELF(argc, argv);
 
-#ifdef _WIN32
-    nob_log(NOB_ERROR, "Windows is not supported");
-#endif
 
     if (argc > 1 && strcmp(argv[1], "test")) {
         if (!run_tests()) {
