@@ -46,8 +46,8 @@ bool lexer_run(Lexer *lexer, Tokens *out) {
 }
 
 bool lexer_lex_number(Lexer *lexer, Token *out) {
-    ASSERT(!lexer_is_empty(lexer), "The callee ensures this condition");
-    ASSERT(isdigit(lexer_peek(lexer, 0)), "The callee ensures this condition");
+    ASSERT(!lexer_is_empty(lexer), "The caller ensures this condition");
+    ASSERT(isdigit(lexer_peek(lexer, 0)), "The caller ensures this condition");
     const char *begin = lexer->file.src.items;
     while (!lexer_is_empty(lexer) && isdigit(lexer_peek(lexer, 0))) lexer_consume(lexer);
     const char *end = lexer->file.src.items;
@@ -70,7 +70,7 @@ bool lexer_is_empty(const Lexer *lexer) { return lexer->file.src.count == 0; }
 
 char lexer_peek(const Lexer *lexer, size_t offset) {
     if (lexer->file.src.count <= offset) {
-        log_diagnostic(LL_ERROR, "Tried to access string outside of the valid range");
+        log_message(LL_ERROR, "Tried to access string outside of the valid range");
         return 0;
     }
     return lexer->file.src.items[offset];

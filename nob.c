@@ -6,7 +6,7 @@
 #define BUILD_DIR "build"
 #define TEST_DIR "tests"
 
-#define SOURCES "src/log.c", "src/lexer.c"
+#define SOURCES "src/log.c", "src/lexer.c", "src/arena.c", "src/parser.c"
 
 void common_flags(Cmd *cmd);
 

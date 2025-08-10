@@ -1,10 +1,14 @@
+#include "arena.h"
 #include "lexer.h"
 #include "log.h"
 #include "sv.h"
 #include "util.h"
+#include "parser.h"
+
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,12 +21,9 @@ static void usage(char *program_name);
  * Return: indicates failure (where false is failed read operation)
  */
 bool read_file(const char *file_name, String *s);
-
 bool read_source_file(const char *file_name, SourceFile *out);
 
-typedef struct {
-    TokensSlice tokens;
-} Parser;
+
 
 int main(int argc, char **argv) {
     // TODO: Unhardcode the argument parsing
@@ -42,6 +43,21 @@ int main(int argc, char **argv) {
         log_diagnostic(LL_ERROR, "Failed to lex source code");
         return 1;
     }
+
+    Arena arena = arena_new(1024);
+
+    Parser p = {
+        .arena = &arena,
+        .origin = l.file,
+        .last_token = {0},
+        .tokens =
+            {
+                .count = tokens.count,
+                .items = tokens.items,
+            },
+    };
+    AstExpression e = {0};
+    if (!parser_parse_term(&p, &e)) return 1;
 }
 
 static void usage(char *program_name) {
