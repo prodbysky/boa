@@ -49,6 +49,8 @@ bool run_tests() {
 
     Cmd cmd = {0};
 
+    Procs test_compilations = {0};
+
     for (int i = 0; i < (int)test_paths.count; i++) {
         if (*test_paths.items[i] == '.') continue;
         char *path = temp_sprintf(TEST_DIR "/%s", test_paths.items[i]);
@@ -59,10 +61,15 @@ bool run_tests() {
         cmd_append(&cmd, "cc");
         common_flags(&cmd);
         cmd_append(&cmd, SOURCES, path, "-o", exe_path);
-        if (!nob_cmd_run_sync_and_reset(&cmd)) {
+        if (!nob_procs_append_with_flush(&test_compilations, cmd_run_async_and_reset(&cmd), 16)) {
             nob_log(NOB_WARNING, "Failed to build %s test", path);
             return false;
         }
+    }
+
+    if (!procs_wait_and_reset(&test_compilations)) {
+        nob_log(NOB_WARNING, "Failed to build some test");
+        return false;
     }
 
     for (int i = 0; i < (int)test_paths.count; i++) {
@@ -72,8 +79,8 @@ bool run_tests() {
         exe_path[strlen(exe_path) - 2] = 0; // strip .c suffix
 
         cmd_append(&cmd, exe_path);
-        if (!nob_cmd_run_sync_and_reset(&cmd)) { 
-            nob_log(NOB_WARNING, "%s test failed", exe_path); 
+        if (!nob_cmd_run_sync_and_reset(&cmd)) {
+            nob_log(NOB_WARNING, "%s test failed", exe_path);
             return false;
         }
     }
