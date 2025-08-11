@@ -1,5 +1,5 @@
-#include "../src/lexer.h"
-#include "../src/parser.h"
+#include "../src/frontend/lexer.h"
+#include "../src/frontend/parser.h"
 #include "../src/util.h"
 
 int main() {

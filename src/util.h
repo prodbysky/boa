@@ -1,9 +1,9 @@
 #ifndef UTIL_H_
 #define UTIL_H_
 
-#include <stdlib.h>
-#include <stdbool.h>
 #include "../src/log.h"
+#include <stdbool.h>
+#include <stdlib.h>
 
 #define TODO()                                                                                                         \
     do {                                                                                                               \

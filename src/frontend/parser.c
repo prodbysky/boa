@@ -1,8 +1,20 @@
 #include "parser.h"
 #include "lexer.h"
-#include "log.h"
-#include "util.h"
-#include <wchar.h>
+#include "../log.h"
+#include "../util.h"
+
+bool parser_parse(Parser* parser, AstTree* out) {
+    ASSERT(parser, "Uh oh");
+    ASSERT(out, "Uh oh");
+
+    while (!parser_is_empty(parser)) {
+        AstStatement st = {0};
+        if (!parser_parse_statement(parser, &st)) return false;
+        da_push(out, st);
+    }
+
+    return true;
+}
 
 Token parser_pop(Parser *parser) {
     ASSERT(!parser_is_empty(parser), "Caller ensures this");

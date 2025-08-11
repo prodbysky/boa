@@ -1,7 +1,7 @@
 #include "arena.h"
-#include "lexer.h"
+#include "frontend/lexer.h"
 #include "log.h"
-#include "parser.h"
+#include "frontend/parser.h"
 #include "sv.h"
 #include "util.h"
 
@@ -54,8 +54,8 @@ int main(int argc, char **argv) {
                 .items = tokens.items,
             },
     };
-    AstStatement s = {0};
-    if (!parser_parse_statement(&p, &s)) return 1;
+    AstTree tree = {0};
+    if (!parser_parse(&p, &tree)) return 1;
 }
 
 static void usage(char *program_name) {

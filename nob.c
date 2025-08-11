@@ -6,7 +6,7 @@
 #define BUILD_DIR "build"
 #define TEST_DIR "tests"
 
-#define SOURCES "src/log.c", "src/lexer.c", "src/arena.c", "src/parser.c"
+#define SOURCES "src/log.c", "src/frontend/lexer.c", "src/arena.c", "src/frontend/parser.c"
 
 #ifdef _WIN32
     // @sa.pohod ty <3

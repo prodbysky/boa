@@ -1,6 +1,6 @@
 #ifndef LEXER_H_
 #define LEXER_H_
-#include "sv.h"
+#include "../sv.h"
 
 #include <stdbool.h>
 #include <stddef.h>

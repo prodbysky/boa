@@ -1,6 +1,6 @@
 #ifndef PARSER_H_
 #define PARSER_H_
-#include "arena.h"
+#include "../arena.h"
 #include "lexer.h"
 #include <stddef.h>
 
@@ -42,6 +42,14 @@ typedef struct {
         } ret;
     };
 } AstStatement;
+
+typedef struct {
+    AstStatement* items;
+    size_t count;
+    size_t capacity;
+} AstTree;
+
+bool parser_parse(Parser* parser, AstTree* out);
 
 bool parser_is_empty(const Parser *parser);
 Token parser_pop(Parser *parser);

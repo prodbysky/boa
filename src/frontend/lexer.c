@@ -1,6 +1,6 @@
 #include "lexer.h"
-#include "log.h"
-#include "util.h"
+#include "../log.h"
+#include "../util.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>

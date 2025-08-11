@@ -1,4 +1,4 @@
-#include "../src/lexer.h"
+#include "../src/frontend/lexer.h"
 #include "../src/util.h"
 #include <string.h>
 
