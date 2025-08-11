@@ -2,7 +2,9 @@
 #include "log.h"
 #include "util.h"
 #include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 static const OperatorType char_to_op[] = {
     ['+'] = OT_PLUS,
@@ -25,24 +27,73 @@ bool lexer_run(Lexer *lexer, Tokens *out) {
             continue;
         }
 
+        if (lexer_peek(lexer, 0) == '_' || isalpha(lexer_peek(lexer, 0))) {
+            Token t = {0};
+            if (!lexer_lex_ident_or_keyword(lexer, &t)) return false;
+            da_push(out, t);
+            continue;
+        }
+
         switch (lexer_peek(lexer, 0)) {
-            case 0: UNREACHABLE("The lexer can't be empty in here");
-            case '+': case '-': case '*': case '/': {
-                Token t = {0};
-                t.type = TT_OPERATOR;
-                t.len = 1;
-                t.begin = lexer->file.src.items;
-                t.operator = char_to_op[(size_t)lexer_peek(lexer, 0)];
-                da_push(out, t);
-                lexer_consume(lexer);
-                continue;
-            }
+        case 0: UNREACHABLE("The lexer can't be empty in here");
+        case '+':
+        case '-':
+        case '*':
+        case '/': {
+            Token t = {0};
+            t.type = TT_OPERATOR;
+            t.len = 1;
+            t.begin = lexer->file.src.items;
+            t.operator= char_to_op[(size_t)lexer_peek(lexer, 0)];
+            da_push(out, t);
+            lexer_consume(lexer);
+            continue;
+        }
+        case ';': {
+            Token t = {0};
+            t.type = TT_SEMICOLON;
+            t.len = 1;
+            t.begin = lexer->file.src.items;
+            da_push(out, t);
+            lexer_consume(lexer);
+            continue;
+        }
         }
 
         TODO();
     }
 
     return true;
+}
+
+bool lexer_lex_ident_or_keyword(Lexer *lexer, Token *out) {
+    ASSERT(!lexer_is_empty(lexer), "The caller ensures this condition");
+    ASSERT(lexer_peek(lexer, 0) == '_' || isalpha(lexer_peek(lexer, 0)), "The caller ensures this condition");
+    const char *begin = lexer->file.src.items;
+
+    while (!lexer_is_empty(lexer) && (lexer_peek(lexer, 0) == '_' || isalpha(lexer_peek(lexer, 0))))
+        lexer_consume(lexer);
+
+    const char *end = lexer->file.src.items;
+
+    ASSERT(lexer_ident_is_keyword(begin, end - begin), "Custom identifiers are not implemented yet");
+    out->type = TT_KEYWORD;
+    out->begin = begin;
+    out->len = end - begin;
+    out->keyword = lexer_keyword(begin, end - begin);
+
+    return true;
+}
+
+// TODO: Make this "better"
+bool lexer_ident_is_keyword(const char *begin, ptrdiff_t len) {
+    if (strncmp(begin, "return", len) == 0) return true;
+    return false;
+}
+
+KeywordType lexer_keyword(const char *begin, ptrdiff_t len) {
+    if (strncmp(begin, "return", len) == 0) return KT_RETURN;
+    return KT_NO;
 }
 
 bool lexer_lex_number(Lexer *lexer, Token *out) {
@@ -60,7 +111,7 @@ bool lexer_lex_number(Lexer *lexer, Token *out) {
     out->type = TT_NUMBER;
     out->begin = begin;
     out->len = end - begin;
-    char* got_end = NULL;
+    char *got_end = NULL;
     out->number = strtoull(begin, &got_end, 10);
     ASSERT(got_end == end, "LEXER BUG");
     return true;
@@ -88,8 +139,7 @@ void lexer_skip_ws(Lexer *lexer) {
     while (!lexer_is_empty(lexer) && isspace((lexer_peek(lexer, 0)))) lexer_consume(lexer);
 }
 
-void report_error(const char *begin, const char *end, const char *src,
-                  const char *name) {
+void report_error(const char *begin, const char *end, const char *src, const char *name) {
     int row = 1, col = 1; // x, y;
     ptrdiff_t offset = end - begin;
     for (int i = 0; i < offset; i++) {

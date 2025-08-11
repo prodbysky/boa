@@ -1,7 +1,8 @@
 #ifndef PARSER_H_
 #define PARSER_H_
-#include "lexer.h"
 #include "arena.h"
+#include "lexer.h"
+#include <stddef.h>
 
 typedef struct {
     TokensSlice tokens;
@@ -28,7 +29,21 @@ typedef struct AstExpression {
     };
 } AstExpression;
 
-bool parser_is_empty(const Parser *parser); 
+typedef enum { AST_RETURN } AstStatementType;
+
+typedef struct {
+    AstStatementType type;
+    const char *begin;
+    ptrdiff_t len;
+    union {
+        struct {
+            bool has_expr;
+            AstExpression return_expr;
+        } ret;
+    };
+} AstStatement;
+
+bool parser_is_empty(const Parser *parser);
 Token parser_pop(Parser *parser);
 Token parser_peek(const Parser *parser, size_t offset);
 
@@ -48,5 +63,7 @@ bool parser_parse_expr(Parser *parser, AstExpression *out);
 bool parser_parse_factor(Parser *parser, AstExpression *out);
 bool parser_parse_term(Parser *parser, AstExpression *out);
 bool parser_parse_primary(Parser *parser, AstExpression *out);
+
+bool parser_parse_statement(Parser *parser, AstStatement *out);
 
 #endif

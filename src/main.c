@@ -54,8 +54,8 @@ int main(int argc, char **argv) {
                 .items = tokens.items,
             },
     };
-    AstExpression e = {0};
-    if (!parser_parse_term(&p, &e)) return 1;
+    AstStatement s = {0};
+    if (!parser_parse_statement(&p, &s)) return 1;
 }
 
 static void usage(char *program_name) {
