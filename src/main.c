@@ -1,9 +1,12 @@
 #include "arena.h"
-#include "frontend/lexer.h"
 #include "log.h"
-#include "frontend/parser.h"
 #include "sv.h"
 #include "util.h"
+
+#include "frontend/lexer.h"
+#include "frontend/parser.h"
+
+#include "backend/ir.h"
 
 #include <errno.h>
 #include <stdbool.h>
@@ -56,6 +59,9 @@ int main(int argc, char **argv) {
     };
     AstTree tree = {0};
     if (!parser_parse(&p, &tree)) return 1;
+
+    IRModule mod = {0};
+    if (!generate_ir_module(&tree, &mod)) return 1;
 }
 
 static void usage(char *program_name) {
