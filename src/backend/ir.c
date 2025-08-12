@@ -69,6 +69,7 @@ bool generate_ir_expr(const AstExpression* expr, IRValue* out_value, IRFunction*
             return true;
         }
     }
+    UNREACHABLE("Again this shouldn't ever be reached")
 
     return false;
 }

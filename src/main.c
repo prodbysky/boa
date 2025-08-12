@@ -8,6 +8,8 @@
 
 #include "backend/ir.h"
 
+#include "backend/codegen/fasm_x86_64_linux.h"
+
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -15,6 +17,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 static void usage(char *program_name);
 
@@ -26,14 +31,17 @@ static void usage(char *program_name);
 bool read_file(const char *file_name, String *s);
 bool read_source_file(const char *file_name, SourceFile *out);
 
+int run_program(const char *prog, char *args[]);
+
 int main(int argc, char **argv) {
     // TODO: Unhardcode the argument parsing
     char *program_name = argv[0];
-    if (argc < 2) {
+    if (argc < 3) {
         usage(program_name);
         return 1;
     }
     char *input_name = argv[1];
+    char *output_name = argv[2];
 
     SourceFile file = {0};
     if (!read_source_file(input_name, &file)) return 1;
@@ -62,11 +70,46 @@ int main(int argc, char **argv) {
 
     IRModule mod = {0};
     if (!generate_ir_module(&tree, &mod)) return 1;
+
+    size_t len = strlen(output_name) + 5;
+    char *out_fasm_name = malloc((len + 1) * sizeof(char));
+    out_fasm_name[len] = 0;
+    sprintf(out_fasm_name, "%s.fasm", output_name);
+    FILE *out = fopen(out_fasm_name, "wb");
+    if (!generate_fasm_x86_64_linux(out, &mod)) return 1;
+    fclose(out);
+
+    run_program("fasm", (char *[]){"fasm", out_fasm_name, NULL});
+}
+
+int run_program(const char *prog, char *args[]) {
+    pid_t pi = fork();
+
+    if (pi == -1) {
+        log_message(LL_ERROR, "Failed to fork :(");
+        return -1;
+    }
+    if (pi == 0) {
+        if (execvp(prog, args) == -1) {
+            log_message(LL_ERROR, "Failed to execute %s: %s", prog, strerror(errno));
+            exit(-1);
+        }
+    } else {
+        for (;;) {
+            int status = 0;
+            if (waitpid(pi, &status, 0) == -1) {
+                log_message(LL_ERROR, "Failed to wait on %d: %s", pi, strerror(errno));
+                return -1;
+            }
+            if (WIFEXITED(status)) { return WEXITSTATUS(status); }
+        }
+    }
+    return 0;
 }
 
 static void usage(char *program_name) {
     log_message(LL_INFO, "Usage: ");
-    log_message(LL_INFO, "  %s <input.boa>", program_name);
+    log_message(LL_INFO, "  %s <input.boa> <output-name>", program_name);
 }
 bool read_source_file(const char *file_name, SourceFile *out) {
     ASSERT(file_name, "Passed in NULL for the file name");
