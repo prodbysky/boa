@@ -5,6 +5,19 @@
 static bool generate_function(FILE *sink, const IRFunction *func);
 static bool generate_statement(FILE *sink, const IRStatement *st);
 
+static void emit_return_some(FILE *sink, const IRStatement *ret);
+static void emit_return_none(FILE *sink, const IRStatement* ret_none);
+
+static void emit_add(FILE *sink, const IRStatement *st);
+static void emit_sub(FILE *sink, const IRStatement *st);
+static void emit_imul(FILE *sink, const IRStatement *st);
+static void emit_div(FILE *sink, const IRStatement *st);
+
+static void emit_add_reg_value(FILE *sink, const char *reg, const IRValue *value);
+static void emit_sub_reg_value(FILE *sink, const char *reg, const IRValue *value);
+static void emit_imul_reg_value(FILE *sink, const char *reg, const IRValue *value);
+static void move_value_into_register(FILE *sink, const char *reg, const IRValue *value);
+
 bool nasm_x86_64_linux_generate_file(FILE *sink, const IRModule *mod) {
     ASSERT(mod->functions.count == 1, "expect only one function for now");
     ASSERT(strcmp(mod->functions.items[0].name, "main") == 0, "expect only a main function");
@@ -39,47 +52,138 @@ static bool generate_function(FILE *sink, const IRFunction *func) {
 static bool generate_statement(FILE *sink, const IRStatement *st) {
     switch (st->type) {
     case IRST_RETURN: {
-        switch (st->ret.value.type) {
-        case IRVT_CONST: {
-            fprintf(sink, "  mov %s, %ld\n", "rax", st->ret.value.constant);
-            break;
-        }
-        case IRVT_TEMP: {
-            fprintf(sink, "  mov %s, [rbp - %ld]\n", "rax", (st->ret.value.temp + 1) * 8);
-            break;
-        }
-        }
-        fprintf(sink, "  jmp ret\n");
+        emit_return_some(sink, st);
+        return true;
+    }
+    case IRST_RETURN_EMPTY: {
+        emit_return_none(sink, st);
         return true;
     }
     case IRST_ADD: {
-        ASSERT(st->binop.result.type == IRVT_TEMP, "we can't add to a constant");
-        switch (st->binop.l.type) {
-        case IRVT_CONST: {
-            fprintf(sink, "  mov %s, %ld\n", "rax", st->binop.l.constant);
-            break;
-        }
-        case IRVT_TEMP: {
-            fprintf(sink, "  mov %s, [rbp - %ld]\n", "rax", (st->binop.l.temp + 1) * 8);
-            break;
-        }
-        }
-
-        fprintf(sink, "  add rax, ");
-        switch (st->binop.r.type) {
-        case IRVT_CONST: {
-            fprintf(sink, "%ld\n", st->binop.r.constant);
-            break;
-        }
-        case IRVT_TEMP: {
-            fprintf(sink, "QWORD PTR [rbp - %ld]\n", (st->binop.r.temp + 1) * 8);
-            break;
-        }
-        }
-        fprintf(sink, "  mov [rbp - %ld], rax\n", (st->binop.result.temp + 1) * 8);
+        emit_add(sink, st);
+        return true;
+    }
+    case IRST_SUB: {
+        emit_sub(sink, st);
+        return true;
+    }
+    case IRST_MUL: {
+        emit_imul(sink, st);
+        return true;
+    }
+    case IRST_DIV: {
+        emit_div(sink, st);
         return true;
     }
     default: TODO();
     }
 }
 
+static void emit_return_some(FILE *sink, const IRStatement *ret) {
+    ASSERT(ret->type == IRST_RETURN,
+           "This function should only be called when the type of the statement is IRST_RETURN");
+    move_value_into_register(sink, "rax", &ret->ret.value);
+    fprintf(sink, "  jmp ret\n");
+}
+
+static void emit_return_none(FILE *sink, const IRStatement* ret_none) {
+    ASSERT(ret_none->type == IRST_RETURN_EMPTY,
+           "This function should only be called when the type of the statement is IRST_RETURN_EMPTY");
+    fprintf(sink, "  jmp ret\n");
+
+}
+
+static void emit_add(FILE *sink, const IRStatement *st) {
+    ASSERT(st->type == IRST_ADD, "This function should only be called when the type of the statement is IRST_ADD");
+    ASSERT(st->binop.result.type == IRVT_TEMP, "we can't add to a constant");
+    move_value_into_register(sink, "rax", &st->binop.l);
+
+    emit_add_reg_value(sink, "rax", &st->binop.r);
+    fprintf(sink, "  mov [rbp - %ld], rax\n", (st->binop.result.temp + 1) * 8);
+}
+
+static void emit_sub(FILE *sink, const IRStatement *st) {
+    ASSERT(st->type == IRST_SUB, "This function should only be called when the type of the statement is IRST_SUB");
+    ASSERT(st->binop.result.type == IRVT_TEMP, "we can't sub a constant");
+    move_value_into_register(sink, "rax", &st->binop.l);
+
+    emit_sub_reg_value(sink, "rax", &st->binop.r);
+    fprintf(sink, "  mov [rbp - %ld], rax\n", (st->binop.result.temp + 1) * 8);
+}
+
+static void emit_imul(FILE *sink, const IRStatement *st) {
+    ASSERT(st->type == IRST_MUL, "This function should only be called when the type of the statement is IRST_MUL");
+    ASSERT(st->binop.result.type == IRVT_TEMP, "we can't mul a constant");
+    move_value_into_register(sink, "rax", &st->binop.l);
+
+    emit_imul_reg_value(sink, "rax", &st->binop.r);
+    fprintf(sink, "  mov [rbp - %ld], rax\n", (st->binop.result.temp + 1) * 8);
+}
+
+static void emit_div(FILE *sink, const IRStatement *st) {
+    // ugh x86_64 is so weird
+    // rax low bits
+    // rdi high bits
+    ASSERT(st->type == IRST_DIV, "This function should only be called when the type of the statement is IRST_DIV");
+    ASSERT(st->binop.result.type == IRVT_TEMP, "we can't div a constant");
+    move_value_into_register(sink, "rax", &st->binop.l);
+    fprintf(sink, "  xor rdx, rdx\n");
+    move_value_into_register(sink, "rcx", &st->binop.r);
+    fprintf(sink, "  div rcx\n");
+    fprintf(sink, "  mov [rbp - %ld], rax\n", (st->binop.result.temp + 1) * 8);
+}
+
+static void emit_add_reg_value(FILE *sink, const char *reg, const IRValue *value) {
+    fprintf(sink, "  add %s, ", reg);
+    switch (value->type) {
+    case IRVT_CONST: {
+        fprintf(sink, "%ld\n", value->constant);
+        break;
+    }
+    case IRVT_TEMP: {
+        fprintf(sink, "QWORD PTR [rbp - %ld]\n", (value->temp + 1) * 8);
+        break;
+    }
+    }
+}
+
+static void emit_sub_reg_value(FILE *sink, const char *reg, const IRValue *value) {
+    fprintf(sink, "  sub %s, ", reg);
+    switch (value->type) {
+    case IRVT_CONST: {
+        fprintf(sink, "%ld\n", value->constant);
+        break;
+    }
+    case IRVT_TEMP: {
+        fprintf(sink, "QWORD PTR [rbp - %ld]\n", (value->temp + 1) * 8);
+        break;
+    }
+    }
+}
+
+static void emit_imul_reg_value(FILE *sink, const char *reg, const IRValue *value) {
+    fprintf(sink, "  imul %s, %s, ", reg, reg);
+    switch (value->type) {
+    case IRVT_CONST: {
+        fprintf(sink, "%ld\n", value->constant);
+        break;
+    }
+    case IRVT_TEMP: {
+        fprintf(sink, "QWORD PTR [rbp - %ld]\n", (value->temp + 1) * 8);
+        break;
+    }
+    }
+}
+
+static void move_value_into_register(FILE *sink, const char *reg, const IRValue *value) {
+    switch (value->type) {
+    case IRVT_CONST: {
+        fprintf(sink, "  mov %s, %ld\n", reg, value->constant);
+        break;
+    }
+    case IRVT_TEMP: {
+        fprintf(sink, "  mov %s, [rbp - %ld]\n", "rax", (value->temp + 1) * 8);
+        break;
+    }
+    }
+}
