@@ -2,6 +2,7 @@
 #define UTIL_H_
 
 #include "../src/log.h"
+#include "sv.h"
 #include <stdbool.h>
 #include <stdlib.h>
 
@@ -39,5 +40,15 @@
         }                                                                                                              \
         (arr)->items[(arr)->count++] = item;                                                                           \
     } while (false)
+
+/*
+ * Argument `file_name`: input file name (null-terminated C-str)
+ * Argument `s`: output parameter which will be filled out
+ * Return: indicates failure (where false is failed read operation)
+ */
+bool read_file(const char *file_name, String *s);
+bool read_source_file(const char *file_name, SourceFile *out);
+
+int run_program(const char *prog, char *args[]);
 
 #endif
