@@ -46,6 +46,19 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
+/**
+ * Compile and run all test files found in TEST_DIR.
+ *
+ * Scans TEST_DIR for C test files (skips entries beginning with '.') and for each:
+ * - compiles it together with the project SOURCES into BUILD_DIR/TEST_DIR (strips ".c" for the executable name),
+ *   submitting compilations asynchronously with a concurrency limit of 16;
+ * - after successful compilation of all tests, runs each test executable.
+ *
+ * Returns true only if all test compilations and all test executions succeed; returns false on any failure
+ * (compilation submission failure, any compile error, or any test runtime failure). Logs warnings on failures.
+ *
+ * @return true if all tests compiled and ran successfully, false otherwise.
+ */
 bool run_tests() {
     nob_log(NOB_INFO, "Running tests...");
 
@@ -93,4 +106,13 @@ bool run_tests() {
     return true;
 }
 
+/**
+ * Append the project's standard compiler flags to a command.
+ *
+ * Adds warnings and optimization flags used for building both the main program
+ * and tests: -Wall, -Wextra, -Werror, -std=c17, -O3, -g, and suppresses specific
+ * warnings with -Wno-nonnull and -Wno-format-overflow.
+ *
+ * @param cmd Command object to which the flags will be appended.
+ */
 void common_flags(Cmd *cmd) { cmd_append(cmd, "-Wall", "-Wextra", "-Werror", "-std=c17", "-O3", "-g", "-Wno-nonnull", "-Wno-format-overflow" ); }

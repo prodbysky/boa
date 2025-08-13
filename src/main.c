@@ -23,6 +23,25 @@ typedef struct {
 
 bool parse_config(Config *conf, int argc, char **argv);
 
+/**
+ * Program entry point and single-file compiler driver.
+ *
+ * Parses command-line arguments, reads and lexes the input source, parses
+ * to an AST, lowers to an IR module, emits NASM x86-64 assembly, assembles
+ * with `nasm`, links with `ld` to produce the final executable, and
+ * optionally removes intermediate artifacts.
+ *
+ * Side effects:
+ *  - Reads the input file specified on the command line.
+ *  - Writes "<output_name>.asm" and "<output_name>.o" and the final executable.
+ *  - Invokes external programs: "nasm", "ld" and "rm" (for cleanup).
+ *  - Logs diagnostics on failure.
+ *
+ * Return:
+ *  - 0 on success.
+ *  - 1 on any error (argument parsing, file I/O, lexing, parsing, IR gen,
+ *    assembly or linking).
+ */
 int main(int argc, char **argv) {
     Config c = {0};
     if (!parse_config(&c, argc, argv)) {
@@ -86,6 +105,27 @@ int main(int argc, char **argv) {
     if (c.keep_build_artifacts) { run_program("rm", (char *[]){"rm", out_o_name, out_asm_name, NULL}); }
 }
 
+/**
+ * Parse command-line arguments into a Config structure.
+ *
+ * Processes argv to populate conf->exe_name, conf->input_name, conf->output_name,
+ * and conf->keep_build_artifacts. Recognized flags:
+ *  - "-o <name>"           : set custom output base name
+ *  - "-keep-artifacts"     : preserve intermediate build artifacts
+ *  - "-help"               : print usage and exit(0)
+ *
+ * If -o is not provided, output_name is derived from the input file name by
+ * truncating the final three characters (allocates a new string). On error
+ * (missing input, duplicate flags, unknown flag, or malformed -o usage) a
+ * diagnostic is logged and the function returns false.
+ *
+ * @param conf Pointer to the Config to fill (must be non-NULL). Fields may be
+ *             modified or allocated by this function.
+ * @param argc Argument count (as passed to main).
+ * @param argv Argument vector (as passed to main).
+ * @return true if arguments were parsed successfully and conf is populated;
+ *         false on parse error (caller should handle diagnostics and exit).
+ */
 bool parse_config(Config *conf, int argc, char **argv) {
     conf->exe_name = *argv;
     argc--;
@@ -143,6 +183,14 @@ bool parse_config(Config *conf, int argc, char **argv) {
     return true;
 }
 
+/**
+ * Print program usage and available command-line flags to the diagnostics log.
+ *
+ * Prints a short synopsis that uses `program_name` (typically `argv[0]`) and
+ * enumerates supported flags: `-help`, `-o <name>`, and `-keep-artifacts`.
+ *
+ * @param program_name Program invocation name used in the usage synopsis.
+ */
 static void usage(char *program_name) {
     log_diagnostic(LL_INFO, "Usage: ");
     log_diagnostic(LL_INFO, "  %s <input.boa> [FLAGS]", program_name);
