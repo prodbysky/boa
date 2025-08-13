@@ -15,7 +15,9 @@ typedef enum {
     TT_NUMBER = 0,
     TT_OPERATOR,
     TT_KEYWORD,
+    TT_IDENT,
     TT_SEMICOLON,
+    TT_ASSIGN,
 } TokenType;
 
 typedef enum {
@@ -27,7 +29,8 @@ typedef enum {
 
 typedef enum {
     KT_NO = 0,
-    KT_RETURN = 1,
+    KT_RETURN,
+    KT_LET
 } KeywordType;
 
 typedef struct {
@@ -38,7 +41,7 @@ typedef struct {
         uint64_t number;
         OperatorType operator;
         KeywordType keyword;
-        // StringView identifier;
+        StringView identifier;
     };
 } Token;
 

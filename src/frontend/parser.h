@@ -29,7 +29,7 @@ typedef struct AstExpression {
     };
 } AstExpression;
 
-typedef enum { AST_RETURN } AstStatementType;
+typedef enum { AST_RETURN, AST_LET } AstStatementType;
 
 typedef struct {
     AstStatementType type;
@@ -40,20 +40,27 @@ typedef struct {
             bool has_expr;
             AstExpression return_expr;
         } ret;
+        struct {
+            StringView name;
+            AstExpression value;
+        } let;
     };
 } AstStatement;
 
 typedef struct {
-    AstStatement* items;
+    AstStatement *items;
     size_t count;
     size_t capacity;
 } AstTree;
 
-bool parser_parse(Parser* parser, AstTree* out);
+bool parser_parse(Parser *parser, AstTree *out);
 
 bool parser_is_empty(const Parser *parser);
 Token parser_pop(Parser *parser);
 Token parser_peek(const Parser *parser, size_t offset);
+
+bool parser_expect_ident(Parser* parser, StringView* out);
+bool parser_expect_and_skip(Parser* parser, TokenType type);
 
 /*
     https://timothya.com/pdfs/crafting-interpreters.pdf

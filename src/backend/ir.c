@@ -32,6 +32,7 @@ bool generate_ir_statement(const AstStatement* st, IRFunction* out) {
 
             }
         }
+        case AST_LET: TODO(); break;
     }
     UNREACHABLE("This shouldn't ever be reached, so all statements should early return from their case in the switch statement");
     return false;
