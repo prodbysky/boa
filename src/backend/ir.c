@@ -66,6 +66,8 @@ bool generate_ir_expr(const AstExpression* expr, IRValue* out_value, IRFunction*
                 case OT_DIV: st.type = IRST_DIV; break;
             }
             da_push(&out->body, st);
+            *out_value = result;
+        
             return true;
         }
     }
