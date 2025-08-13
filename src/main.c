@@ -7,8 +7,7 @@
 #include "frontend/parser.h"
 
 #include "backend/ir.h"
-
-#include "backend/codegen/fasm_x86_64_linux.h"
+#include "backend/codegen/nasm_x86_64_linux.h"
 
 #include <errno.h>
 #include <stdbool.h>
@@ -71,15 +70,24 @@ int main(int argc, char **argv) {
     IRModule mod = {0};
     if (!generate_ir_module(&tree, &mod)) return 1;
 
-    size_t len = strlen(output_name) + 5;
-    char *out_fasm_name = malloc((len + 1) * sizeof(char));
-    out_fasm_name[len] = 0;
-    sprintf(out_fasm_name, "%s.fasm", output_name);
-    FILE *out = fopen(out_fasm_name, "wb");
-    if (!generate_fasm_x86_64_linux(out, &mod)) return 1;
-    fclose(out);
+    // TODO: Do something to this mess
+    size_t output_name_len = strlen(output_name);
+    size_t output_asm_name_len = output_name_len + 4;
+    char* out_asm_name = malloc((output_asm_name_len + 1) * sizeof(char));
+    out_asm_name[output_asm_name_len] = 0;
+    sprintf(out_asm_name, "%s.asm", output_name);
 
-    run_program("fasm", (char *[]){"fasm", out_fasm_name, NULL});
+    size_t output_o_name_len = output_name_len + 4;
+    char* out_o_name = malloc((output_o_name_len + 1) * sizeof(char));
+    out_o_name[output_o_name_len] = 0;
+    sprintf(out_o_name, "%s.o", output_name);
+
+    FILE* asm_file = fopen(out_asm_name, "wb");
+    nasm_x86_64_linux_generate_file(asm_file, &mod);
+    fclose(asm_file);
+
+    run_program("nasm", (char*[]){"nasm", out_asm_name, "-f", "elf64", "-o", out_o_name, NULL});
+    run_program("ld", (char*[]){"ld", out_o_name, "-o", output_name, NULL});
 }
 
 int run_program(const char *prog, char *args[]) {
