@@ -41,6 +41,15 @@
         (arr)->items[(arr)->count++] = item;                                                                           \
     } while (false)
 
+typedef struct {
+    String path;
+} Path;
+
+Path path_from_cstr(char* cstr);
+void path_add_ext(Path* path, const char* ext);
+
+char* path_to_cstr(Path* path);
+
 /*
  * Argument `file_name`: input file name (null-terminated C-str)
  * Argument `s`: output parameter which will be filled out

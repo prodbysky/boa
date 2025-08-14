@@ -1,8 +1,36 @@
 #include "util.h"
+#include "sv.h"
 #include <errno.h>
+#include <stdio.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+Path path_from_cstr(char *cstr) {
+    return (Path){
+        .path =
+            (String){
+                .items = strndup(cstr, strlen(cstr)),
+                .count = strlen(cstr),
+                .capacity = strlen(cstr),
+            },
+    };
+}
+
+void path_add_ext(Path* path, const char* ext) {
+    da_push(&path->path, '.');
+    for (size_t i = 0; i < strlen(ext); i++) {
+        da_push(&path->path, ext[i]);
+    }
+}
+
+char* path_to_cstr(Path* path) {
+    char* c_str = malloc(sizeof(char) * (path->path.count + 1));
+    c_str[path->path.count] = 0;
+    strncpy(c_str, path->path.items, path->path.count);
+    return c_str;
+}
 
 int run_program(const char *prog, char *args[]) {
     pid_t pi = fork();
