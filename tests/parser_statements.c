@@ -3,7 +3,7 @@
 #include "../src/util.h"
 
 int main() {
-    char *src = "return; return 123;";
+    char *src = "return; return 123; let number = 123;";
     Lexer l = {.begin_of_src = src, .file = {.name = "CONST", .src = SV_FROM_CSTR(src)}};
     Tokens ts = {0};
     ASSERT(lexer_run(&l, &ts), "The source code should be lexible without any errors");
@@ -38,6 +38,15 @@ int main() {
         if (return_value.type != AST_RETURN) return 1;
         if (!return_value.ret.has_expr) return 1;
         if (return_value.ret.return_expr.type != AET_PRIMARY) return 1;
+    }
+    {
+        AstStatement let_statement = {0};
+        ASSERT(parser_parse_statement(&p, &let_statement), "The source code should be parsible without any errors");
+
+        if (let_statement.begin != src + 20) return 1;
+        if (let_statement.len != 17) return 1;
+        if (let_statement.type != AST_LET) return 1;
+        if (strncmp((char*)let_statement.let.name.items, "number", 6) != 0) return 1;
     }
 
     return 0;

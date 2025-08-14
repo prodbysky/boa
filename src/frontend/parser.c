@@ -1,11 +1,13 @@
 #include "parser.h"
-#include "lexer.h"
 #include "../log.h"
 #include "../util.h"
+#include "lexer.h"
 
-bool parser_parse(Parser* parser, AstTree* out) {
+bool parser_parse(Parser *parser, AstTree *out) {
     ASSERT(parser, "Uh oh");
     ASSERT(out, "Uh oh");
+
+    out->source = parser->origin;
 
     while (!parser_is_empty(parser)) {
         AstStatement st = {0};
@@ -31,6 +33,26 @@ Token parser_peek(const Parser *parser, size_t offset) {
     return parser->tokens.items[offset];
 }
 
+bool parser_expect_ident(Parser *parser, StringView *out) {
+    if (parser_is_empty(parser)) return false;
+    if (parser_peek(parser, 0).type == TT_IDENT) {
+        *out = parser_pop(parser).identifier;
+        return true;
+    }
+    return false;
+}
+
+bool parser_expect_and_skip(Parser *parser, TokenType type) {
+    if (parser_is_empty(parser)) return false;
+
+    if (parser_peek(parser, 0).type == type) {
+        parser_pop(parser);
+        return true;
+    }
+
+    return false;
+}
+
 bool parser_parse_expr(Parser *parser, AstExpression *out) { return parser_parse_term(parser, out); }
 
 bool parser_parse_primary(Parser *parser, AstExpression *out) {
@@ -46,6 +68,14 @@ bool parser_parse_primary(Parser *parser, AstExpression *out) {
         out->type = AET_PRIMARY;
         out->len = t.len;
         out->number = t.number;
+        out->begin = t.begin;
+        return true;
+    }
+    case TT_IDENT: {
+        // TODO: Function call parsing as a primary expression
+        out->type = AET_IDENT;
+        out->len = t.identifier.count;
+        out->ident = t.identifier;
         out->begin = t.begin;
         return true;
     }
@@ -141,8 +171,28 @@ bool parser_parse_statement(Parser *parser, AstStatement *out) {
         default: {
             if (!parser_parse_expr(parser, &out->ret.return_expr)) return false;
             out->ret.has_expr = true;
+            break;
         }
         }
+        break;
+    }
+    case KT_LET: {
+        if (!parser_expect_ident(parser, &out->let.name)) {
+            log_diagnostic(LL_ERROR, "Expected a name for a variable definition here");
+            report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                         parser->origin.src.items, parser->origin.name);
+            return false;
+        }
+        if (!parser_expect_and_skip(parser, TT_ASSIGN)) {
+            log_diagnostic(LL_ERROR, "Expected `=` here after the name of the let binding");
+            report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                         parser->origin.src.items, parser->origin.name);
+            return false;
+        }
+
+        if (!parser_parse_expr(parser, &out->let.value)) return false;
+        out->type = AST_LET;
+        break;
     }
     }
 

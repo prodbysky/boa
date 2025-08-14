@@ -58,6 +58,16 @@ bool lexer_run(Lexer *lexer, Tokens *out) {
             lexer_consume(lexer);
             continue;
         }
+        case '=': {
+            Token t = {0};
+            t.type = TT_ASSIGN;
+            t.len = 1;
+            t.begin = lexer->file.src.items;
+            da_push(out, t);
+            lexer_consume(lexer);
+            continue;
+
+        }
         }
 
         TODO();
@@ -76,11 +86,20 @@ bool lexer_lex_ident_or_keyword(Lexer *lexer, Token *out) {
 
     const char *end = lexer->file.src.items;
 
-    ASSERT(lexer_ident_is_keyword(begin, end - begin), "Custom identifiers are not implemented yet");
-    out->type = TT_KEYWORD;
-    out->begin = begin;
-    out->len = end - begin;
-    out->keyword = lexer_keyword(begin, end - begin);
+    if (lexer_ident_is_keyword(begin, end - begin)) {
+        out->type = TT_KEYWORD;
+        out->begin = begin;
+        out->len = end - begin;
+        out->keyword = lexer_keyword(begin, end - begin);
+    } else {
+        out->type = TT_IDENT;
+        out->begin = begin;
+        out->len = end - begin;
+        out->identifier = (StringView){
+            .items = begin,
+            .count = out->len,
+        };
+    }
 
     return true;
 }
@@ -88,11 +107,13 @@ bool lexer_lex_ident_or_keyword(Lexer *lexer, Token *out) {
 // TODO: Make this "better"
 bool lexer_ident_is_keyword(const char *begin, ptrdiff_t len) {
     if (strncmp(begin, "return", len) == 0) return true;
+    if (strncmp(begin, "let", len) == 0) return true;
     return false;
 }
 
 KeywordType lexer_keyword(const char *begin, ptrdiff_t len) {
     if (strncmp(begin, "return", len) == 0) return KT_RETURN;
+    if (strncmp(begin, "let", len) == 0) return KT_LET;
     return KT_NO;
 }
 

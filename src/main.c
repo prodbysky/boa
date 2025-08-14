@@ -79,11 +79,11 @@ int main(int argc, char **argv) {
         return 1;
     }
     if (run_program("ld", (char *[]){"ld", out_o_name, "-o", c.output_name, NULL}) != 0) {
-        if (c.keep_build_artifacts) { run_program("rm", (char *[]){"rm", out_o_name, out_asm_name, NULL}); }
+        if (!c.keep_build_artifacts) { run_program("rm", (char *[]){"rm", out_o_name, out_asm_name, NULL}); }
         log_diagnostic(LL_ERROR, "ld failed");
         return 1;
     }
-    if (c.keep_build_artifacts) { run_program("rm", (char *[]){"rm", out_o_name, out_asm_name, NULL}); }
+    if (!c.keep_build_artifacts) { run_program("rm", (char *[]){"rm", out_o_name, out_asm_name, NULL}); }
 }
 
 bool parse_config(Config *conf, int argc, char **argv) {
@@ -110,7 +110,7 @@ bool parse_config(Config *conf, int argc, char **argv) {
             conf->keep_build_artifacts = true;
             argc--;
             argv++;
-        } else if (strcmp(*argv, "-help")) {
+        } else if (strcmp(*argv, "-help") == 0) {
             usage(conf->exe_name);
             exit(0);
         } else {
