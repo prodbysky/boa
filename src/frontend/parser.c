@@ -7,6 +7,8 @@ bool parser_parse(Parser *parser, AstTree *out) {
     ASSERT(parser, "Uh oh");
     ASSERT(out, "Uh oh");
 
+    out->source = parser->origin;
+
     while (!parser_is_empty(parser)) {
         AstStatement st = {0};
         if (!parser_parse_statement(parser, &st)) return false;

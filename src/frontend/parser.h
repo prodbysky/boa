@@ -50,6 +50,7 @@ typedef struct {
 
 typedef struct {
     AstStatement *items;
+    SourceFileView source;
     size_t count;
     size_t capacity;
 } AstTree;

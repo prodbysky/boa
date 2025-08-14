@@ -86,7 +86,7 @@ typedef struct {
 } IRModule;
 
 bool generate_ir_module(const AstTree* ast, IRModule* out);
-bool generate_ir_statement(const AstStatement* st, IRFunction* out);
-bool generate_ir_expr(const AstExpression* expr, IRValue* out_value, IRFunction* out);
+bool generate_ir_statement(const AstTree* tree, const AstStatement* st, IRFunction* out);
+bool generate_ir_expr(const AstTree* tree, const AstExpression* expr, IRValue* out_value, IRFunction* out);
 
 #endif

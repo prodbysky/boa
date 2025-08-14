@@ -66,6 +66,7 @@ bool lexer_run(Lexer *lexer, Tokens *out) {
             da_push(out, t);
             lexer_consume(lexer);
             continue;
+
         }
         }
 

@@ -9,13 +9,13 @@ bool generate_ir_module(const AstTree *ast, IRModule *out) {
     main_func.name = "main";
 
     for (size_t i = 0; i < ast->count; i++) {
-        if (!generate_ir_statement(&ast->items[i], &main_func)) return false;
+        if (!generate_ir_statement(ast, &ast->items[i], &main_func)) return false;
     }
     da_push(&out->functions, main_func);
 
     return true;
 }
-bool generate_ir_statement(const AstStatement *st, IRFunction *out) {
+bool generate_ir_statement(const AstTree *tree, const AstStatement *st, IRFunction *out) {
     ASSERT(st, "Sanity check");
     switch (st->type) {
     case AST_RETURN: {
@@ -24,7 +24,7 @@ bool generate_ir_statement(const AstStatement *st, IRFunction *out) {
             return true;
         } else {
             IRValue value = {0};
-            if (!generate_ir_expr(&st->ret.return_expr, &value, out)) return false;
+            if (!generate_ir_expr(tree, &st->ret.return_expr, &value, out)) return false;
             IRStatement st = (IRStatement){.type = IRST_RETURN, .ret = {value}};
             da_push(&out->body, st);
             return true;
@@ -32,7 +32,7 @@ bool generate_ir_statement(const AstStatement *st, IRFunction *out) {
     }
     case AST_LET: {
         IRValue out_value = {0};
-        if (!generate_ir_expr(&st->let.value, &out_value, out)) return false;
+        if (!generate_ir_expr(tree, &st->let.value, &out_value, out)) return false;
         ASSERT(out_value.type == IRVT_TEMP, "yk idk how this will behave");
         NameValuePair pair = {.name = st->let.name, .index = out_value.temp};
         da_push(&out->variables, pair);
@@ -43,7 +43,7 @@ bool generate_ir_statement(const AstStatement *st, IRFunction *out) {
                 "statement");
     return false;
 }
-bool generate_ir_expr(const AstExpression *expr, IRValue *out_value, IRFunction *out) {
+bool generate_ir_expr(const AstTree *tree, const AstExpression *expr, IRValue *out_value, IRFunction *out) {
     ASSERT(expr, "Sanity check");
     ASSERT(out_value, "Sanity check");
 
@@ -69,8 +69,8 @@ bool generate_ir_expr(const AstExpression *expr, IRValue *out_value, IRFunction 
     case AET_BINARY: {
         IRValue l = {0};
         IRValue r = {0};
-        if (!generate_ir_expr(expr->bin.l, &l, out)) return false;
-        if (!generate_ir_expr(expr->bin.r, &r, out)) return false;
+        if (!generate_ir_expr(tree, expr->bin.l, &l, out)) return false;
+        if (!generate_ir_expr(tree, expr->bin.r, &r, out)) return false;
         IRValue result = {.type = IRVT_TEMP, .temp = out->max_temps++};
         IRStatement st = {.binop = {.l = l, .r = r, .result = result}};
         switch (expr->bin.op) {
@@ -90,10 +90,11 @@ bool generate_ir_expr(const AstExpression *expr, IRValue *out_value, IRFunction 
                 out_value->type = IRVT_TEMP;
                 out_value->temp = out->variables.items[i].index;
                 return true;
-            } else {
-                TODO();
             }
         }
+        log_diagnostic(LL_ERROR, "Found an unknown identifier in place of a expression");
+        report_error(expr->begin, expr->begin + expr->len, tree->source.src.items, tree->source.name);
+        return false;
     }
     }
     UNREACHABLE("Again this shouldn't ever be reached")
