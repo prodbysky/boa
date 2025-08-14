@@ -69,6 +69,14 @@ bool parser_parse_primary(Parser *parser, AstExpression *out) {
         out->begin = t.begin;
         return true;
     }
+    case TT_IDENT: {
+        // TODO: Function call parsing as a primary expression
+        out->type = AET_IDENT;
+        out->len = t.identifier.count;
+        out->ident = t.identifier;
+        out->begin = t.begin;
+        return true;
+    }
     default: {
         log_diagnostic(LL_ERROR, "Expected an expression to be here");
         report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,

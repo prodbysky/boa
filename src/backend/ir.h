@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "../frontend/parser.h"
+
 typedef enum {
     IRVT_CONST,
     IRVT_TEMP,
@@ -29,6 +30,7 @@ typedef enum {
     IRST_SUB,
     IRST_MUL,
     IRST_DIV,
+    IRST_ASSIGN,
 } IRStatementType;
 
 typedef struct {
@@ -42,6 +44,10 @@ typedef struct {
             IRValue r;
             IRValue result;
         } binop;
+        struct {
+            TempValueIndex place;
+            IRValue value;
+        } assign;
     };
 } IRStatement;
 
@@ -52,9 +58,21 @@ typedef struct {
 } IRFunctionBody;
 
 typedef struct {
+    StringView name;
+    TempValueIndex index;
+} NameValuePair;
+
+typedef struct {
+    NameValuePair* items;
+    size_t count;
+    size_t capacity;
+} IRNameToValue;
+
+typedef struct {
     const char* name;
     IRFunctionBody body;
     size_t max_temps;
+    IRNameToValue variables;
 } IRFunction;
 
 typedef struct {

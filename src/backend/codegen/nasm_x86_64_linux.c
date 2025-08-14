@@ -6,17 +6,21 @@ static bool generate_function(FILE *sink, const IRFunction *func);
 static bool generate_statement(FILE *sink, const IRStatement *st);
 
 static void emit_return_some(FILE *sink, const IRStatement *ret);
-static void emit_return_none(FILE *sink, const IRStatement* ret_none);
+static void emit_return_none(FILE *sink, const IRStatement *ret_none);
 
 static void emit_add(FILE *sink, const IRStatement *st);
 static void emit_sub(FILE *sink, const IRStatement *st);
 static void emit_imul(FILE *sink, const IRStatement *st);
 static void emit_div(FILE *sink, const IRStatement *st);
+static void emit_assign(FILE *sink, const IRStatement *st);
 
 static void emit_add_reg_value(FILE *sink, const char *reg, const IRValue *value);
 static void emit_sub_reg_value(FILE *sink, const char *reg, const IRValue *value);
 static void emit_imul_reg_value(FILE *sink, const char *reg, const IRValue *value);
 static void move_value_into_register(FILE *sink, const char *reg, const IRValue *value);
+static void move_value_into_value(FILE *sink, const IRValue *from, const IRValue *into);
+
+static void value_asm_repr(FILE *sink, const IRValue *value);
 
 bool nasm_x86_64_linux_generate_file(FILE *sink, const IRModule *mod) {
     ASSERT(mod->functions.count == 1, "expect only one function for now");
@@ -75,6 +79,10 @@ static bool generate_statement(FILE *sink, const IRStatement *st) {
         emit_div(sink, st);
         return true;
     }
+    case IRST_ASSIGN: {
+        emit_assign(sink, st);
+        return true;
+    }
     default: TODO();
     }
 }
@@ -86,11 +94,10 @@ static void emit_return_some(FILE *sink, const IRStatement *ret) {
     fprintf(sink, "  jmp ret\n");
 }
 
-static void emit_return_none(FILE *sink, const IRStatement* ret_none) {
+static void emit_return_none(FILE *sink, const IRStatement *ret_none) {
     ASSERT(ret_none->type == IRST_RETURN_EMPTY,
            "This function should only be called when the type of the statement is IRST_RETURN_EMPTY");
     fprintf(sink, "  jmp ret\n");
-
 }
 
 static void emit_add(FILE *sink, const IRStatement *st) {
@@ -99,7 +106,7 @@ static void emit_add(FILE *sink, const IRStatement *st) {
     move_value_into_register(sink, "rax", &st->binop.l);
 
     emit_add_reg_value(sink, "rax", &st->binop.r);
-    fprintf(sink, "  mov [rbp - %ld], rax\n", (st->binop.result.temp + 1) * 8);
+    fprintf(sink, "  mov qword [rbp - %ld], rax\n", (st->binop.result.temp + 1) * 8);
 }
 
 static void emit_sub(FILE *sink, const IRStatement *st) {
@@ -108,7 +115,7 @@ static void emit_sub(FILE *sink, const IRStatement *st) {
     move_value_into_register(sink, "rax", &st->binop.l);
 
     emit_sub_reg_value(sink, "rax", &st->binop.r);
-    fprintf(sink, "  mov [rbp - %ld], rax\n", (st->binop.result.temp + 1) * 8);
+    fprintf(sink, "  mov qword [rbp - %ld], rax\n", (st->binop.result.temp + 1) * 8);
 }
 
 static void emit_imul(FILE *sink, const IRStatement *st) {
@@ -117,7 +124,7 @@ static void emit_imul(FILE *sink, const IRStatement *st) {
     move_value_into_register(sink, "rax", &st->binop.l);
 
     emit_imul_reg_value(sink, "rax", &st->binop.r);
-    fprintf(sink, "  mov [rbp - %ld], rax\n", (st->binop.result.temp + 1) * 8);
+    fprintf(sink, "  mov qword [rbp - %ld], rax\n", (st->binop.result.temp + 1) * 8);
 }
 
 static void emit_div(FILE *sink, const IRStatement *st) {
@@ -130,59 +137,58 @@ static void emit_div(FILE *sink, const IRStatement *st) {
     fprintf(sink, "  xor rdx, rdx\n");
     move_value_into_register(sink, "rcx", &st->binop.r);
     fprintf(sink, "  div rcx\n");
-    fprintf(sink, "  mov [rbp - %ld], rax\n", (st->binop.result.temp + 1) * 8);
+    fprintf(sink, "  mov qword [rbp - %ld], rax\n", (st->binop.result.temp + 1) * 8);
 }
+
+static void emit_assign(FILE *sink, const IRStatement *st) {
+    ASSERT(st->type == IRST_ASSIGN,
+           "This function should only be called when the type of the statement is IRST_ASSIGN");
+
+    IRValue temp_value = {.temp = st->assign.place, .type = IRVT_TEMP};
+    move_value_into_value(sink, &st->assign.value, &temp_value);
+}
+
+static void move_value_into_value(FILE *sink, const IRValue *from, const IRValue *into) {
+    // Load source into a register
+    move_value_into_register(sink, "rax", from);
+
+    // Store register into destination
+    fprintf(sink, "  mov ");
+    value_asm_repr(sink, into);
+    fprintf(sink, ", rax\n");}
 
 static void emit_add_reg_value(FILE *sink, const char *reg, const IRValue *value) {
     fprintf(sink, "  add %s, ", reg);
-    switch (value->type) {
-    case IRVT_CONST: {
-        fprintf(sink, "%ld\n", value->constant);
-        break;
-    }
-    case IRVT_TEMP: {
-        fprintf(sink, "QWORD PTR [rbp - %ld]\n", (value->temp + 1) * 8);
-        break;
-    }
-    }
+    value_asm_repr(sink, value);
+    fprintf(sink, "\n");
 }
 
 static void emit_sub_reg_value(FILE *sink, const char *reg, const IRValue *value) {
     fprintf(sink, "  sub %s, ", reg);
-    switch (value->type) {
-    case IRVT_CONST: {
-        fprintf(sink, "%ld\n", value->constant);
-        break;
-    }
-    case IRVT_TEMP: {
-        fprintf(sink, "QWORD PTR [rbp - %ld]\n", (value->temp + 1) * 8);
-        break;
-    }
-    }
+    value_asm_repr(sink, value);
+    fprintf(sink, "\n");
 }
 
 static void emit_imul_reg_value(FILE *sink, const char *reg, const IRValue *value) {
-    fprintf(sink, "  imul %s, %s, ", reg, reg);
-    switch (value->type) {
-    case IRVT_CONST: {
-        fprintf(sink, "%ld\n", value->constant);
-        break;
-    }
-    case IRVT_TEMP: {
-        fprintf(sink, "QWORD PTR [rbp - %ld]\n", (value->temp + 1) * 8);
-        break;
-    }
-    }
+    fprintf(sink, "  imul %s, ", reg);
+    value_asm_repr(sink, value);
+    fprintf(sink, "\n");
 }
 
 static void move_value_into_register(FILE *sink, const char *reg, const IRValue *value) {
+    fprintf(sink, "  mov %s, ", reg);
+    value_asm_repr(sink, value);
+    fprintf(sink, "\n");
+}
+
+static void value_asm_repr(FILE *sink, const IRValue *value) {
     switch (value->type) {
     case IRVT_CONST: {
-        fprintf(sink, "  mov %s, %ld\n", reg, value->constant);
+        fprintf(sink, "%ld", value->constant);
         break;
     }
     case IRVT_TEMP: {
-        fprintf(sink, "  mov %s, [rbp - %ld]\n", "rax", (value->temp + 1) * 8);
+        fprintf(sink, "qword [rbp - %ld]", (value->temp + 1) * 8);
         break;
     }
     }

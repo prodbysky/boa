@@ -13,7 +13,7 @@ typedef struct {
     Arena *arena;
 } Parser;
 
-typedef enum { AET_PRIMARY, AET_BINARY } AstExpressionType;
+typedef enum { AET_PRIMARY, AET_BINARY, AET_IDENT, } AstExpressionType;
 
 typedef struct AstExpression {
     AstExpressionType type;
@@ -21,6 +21,7 @@ typedef struct AstExpression {
     ptrdiff_t len;
     union {
         uint64_t number;
+        StringView ident;
         struct {
             struct AstExpression *l;
             OperatorType op;
