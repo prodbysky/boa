@@ -93,4 +93,4 @@ bool run_tests() {
     return true;
 }
 
-void common_flags(Cmd *cmd) { cmd_append(cmd, "-Wall", "-Wextra", "-Werror", "-std=c17", "-O3", "-g", "-Wno-nonnull", "-Wno-format-overflow" ); }
+void common_flags(Cmd *cmd) { cmd_append(cmd, "-Wall", "-Wextra", "-Werror", "-std=c23", "-O3", "-g", "-Wno-nonnull", "-Wno-format-overflow" ); }
