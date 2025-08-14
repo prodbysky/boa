@@ -31,10 +31,15 @@ bool generate_ir_statement(const AstTree *tree, const AstStatement *st, IRFuncti
         }
     }
     case AST_LET: {
-        IRValue out_value = {0};
-        if (!generate_ir_expr(tree, &st->let.value, &out_value, out)) return false;
-        ASSERT(out_value.type == IRVT_TEMP, "yk idk how this will behave");
-        NameValuePair pair = {.name = st->let.name, .index = out_value.temp};
+        IRValue variable_value = {0};
+        if (!generate_ir_expr(tree, &st->let.value, &variable_value, out)) return false;
+        TempValueIndex place = out->max_temps++;
+        NameValuePair pair = {.name = st->let.name, .index = place};
+        IRStatement st = {
+            .type = IRST_ASSIGN,
+            .assign = {.place = place, .value = variable_value},
+        };
+        da_push(&out->body, st);
         da_push(&out->variables, pair);
         return true;
     } break;
@@ -49,21 +54,8 @@ bool generate_ir_expr(const AstTree *tree, const AstExpression *expr, IRValue *o
 
     switch (expr->type) {
     case AET_PRIMARY: {
-        out_value->type = IRVT_TEMP;
-        out_value->temp = out->max_temps++;
-        IRStatement st = {
-            .type = IRST_ASSIGN,
-            .assign =
-                {
-                    .place = out_value->temp,
-                    .value =
-                        (IRValue){
-                            .type = IRVT_CONST,
-                            .constant = expr->number,
-                        },
-                },
-        };
-        da_push(&out->body, st);
+        out_value->type = IRVT_CONST;
+        out_value->constant = expr->number;
         return true;
     }
     case AET_BINARY: {
