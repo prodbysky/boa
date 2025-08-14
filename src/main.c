@@ -7,7 +7,7 @@
 #include "frontend/parser.h"
 
 #include "backend/codegen/nasm_x86_64_linux.h"
-#include "backend/ir.h"
+#include "backend/ir/ssa.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

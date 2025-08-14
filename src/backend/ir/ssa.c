@@ -1,5 +1,5 @@
-#include "ir.h"
-#include "../util.h"
+#include "ssa.h"
+#include "../../util.h"
 
 // TODO: MULTIPLE FUNCTIONS
 bool generate_ir_module(const AstTree *ast, IRModule *out) {

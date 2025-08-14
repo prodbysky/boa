@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "../frontend/parser.h"
+#include "../../frontend/parser.h"
 
 typedef enum {
     IRVT_CONST,
