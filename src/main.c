@@ -28,6 +28,7 @@ bool parse_config(Config *conf, int argc, char **argv);
 int main(int argc, char **argv) {
     int result = 0;
     Config c = {0};
+
     if (!parse_config(&c, argc, argv)) {
         usage(c.exe_name);
         result = 1;

@@ -1,6 +1,7 @@
 #include "ssa.h"
 #include "../../util.h"
 #include <stdint.h>
+#include <stdlib.h>
 
 // TODO: MULTIPLE FUNCTIONS
 bool generate_ssa_module(const AstTree *ast, SSAModule *out) {
@@ -17,16 +18,24 @@ bool generate_ssa_module(const AstTree *ast, SSAModule *out) {
     return true;
 }
 
+// so far will only do dce for instructions after the return statement
+static bool dce(SSAModule *mod);
+
 bool optimize_ssa_ir(SSAModule *mod) {
-    (void)mod;
-    log_message(LL_WARN, "Running noop optimize_ssa_ir");
+    if (!dce(mod)) return false;
     return true;
 }
-
-/*
-*/
-
-
+static bool dce(SSAModule *mod) {
+    for (size_t i = 0; i < mod->functions.count; i++) {
+        for (size_t j = 0; j < mod->functions.items[i].body.count; j++) {
+            if (mod->functions.items[i].body.items[j].type == SSAST_RETURN ||
+                mod->functions.items[i].body.items[j].type == SSAST_RETURN_EMPTY) {
+                if (mod->functions.items[i].body.capacity > j + 1) { mod->functions.items[i].body.count = j + 1; }
+            }
+        }
+    }
+    return true;
+}
 
 bool generate_ssa_statement(const AstTree *tree, const AstStatement *st, SSAFunction *out) {
     ASSERT(st, "Sanity check");
