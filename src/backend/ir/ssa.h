@@ -22,7 +22,6 @@ typedef struct {
     };
 } SSAValue;
 
-// SSAS lol
 typedef enum {
     SSAST_RETURN,
     SSAST_RETURN_EMPTY,
@@ -88,5 +87,7 @@ typedef struct {
 bool generate_ssa_module(const AstTree* ast, SSAModule* out);
 bool generate_ssa_statement(const AstTree* tree, const AstStatement* st, SSAFunction* out);
 bool generate_ssa_expr(const AstTree* tree, const AstExpression* expr, SSAValue* out_value, SSAFunction* out);
+
+bool optimize_ssa_ir(SSAModule* mod);
 
 #endif

@@ -58,9 +58,10 @@ int main(int argc, char **argv) {
 
     SSAModule mod = {0};
     if (!generate_ssa_module(&tree, &mod)) return 1;
+    if (!optimize_ssa_ir(&mod)) return 1;
 
-    PseudoRegModule pr_mod = {0};
-    if (!pseudo_reg_convert_module(&mod, &pr_mod)) return 1;
+    // PseudoRegModule pr_mod = {0};
+    // if (!pseudo_reg_convert_module(&mod, &pr_mod)) return 1;
 
     Path asm_path = path_from_cstr(c.output_name);
     path_add_ext(&asm_path, "asm");
@@ -68,21 +69,25 @@ int main(int argc, char **argv) {
     Path o_path = path_from_cstr(c.output_name);
     path_add_ext(&o_path, "o");
 
-
     FILE *asm_file = fopen(path_to_cstr(&asm_path), "wb");
     nasm_x86_64_linux_generate_file(asm_file, &mod);
     fclose(asm_file);
 
-    if (run_program("nasm", (char *[]){"nasm", path_to_cstr(&asm_path), "-f", "elf64", "-o", path_to_cstr(&o_path), NULL}) != 0) {
+    if (run_program("nasm", (char *[]){"nasm", path_to_cstr(&asm_path), "-f", "elf64", "-o", path_to_cstr(&o_path),
+                                       NULL}) != 0) {
         log_diagnostic(LL_ERROR, "nasm failed");
         return 1;
     }
     if (run_program("ld", (char *[]){"ld", path_to_cstr(&o_path), "-o", c.output_name, NULL}) != 0) {
-        if (!c.keep_build_artifacts) { run_program("rm", (char *[]){"rm", path_to_cstr(&o_path), path_to_cstr(&asm_path), NULL}); }
+        if (!c.keep_build_artifacts) {
+            run_program("rm", (char *[]){"rm", path_to_cstr(&o_path), path_to_cstr(&asm_path), NULL});
+        }
         log_diagnostic(LL_ERROR, "ld failed");
         return 1;
     }
-    if (!c.keep_build_artifacts) { run_program("rm", (char *[]){"rm", path_to_cstr(&o_path), path_to_cstr(&asm_path), NULL}); }
+    if (!c.keep_build_artifacts) {
+        run_program("rm", (char *[]){"rm", path_to_cstr(&o_path), path_to_cstr(&asm_path), NULL});
+    }
 }
 
 bool parse_config(Config *conf, int argc, char **argv) {
