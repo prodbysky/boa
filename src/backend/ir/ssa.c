@@ -2,41 +2,41 @@
 #include "../../util.h"
 
 // TODO: MULTIPLE FUNCTIONS
-bool generate_ir_module(const AstTree *ast, IRModule *out) {
+bool generate_ssa_module(const AstTree *ast, SSAModule *out) {
     ASSERT(ast, "Sanity check");
     ASSERT(out, "Sanity check");
-    IRFunction main_func = {0};
+    SSAFunction main_func = {0};
     main_func.name = "main";
 
     for (size_t i = 0; i < ast->count; i++) {
-        if (!generate_ir_statement(ast, &ast->items[i], &main_func)) return false;
+        if (!generate_ssa_statement(ast, &ast->items[i], &main_func)) return false;
     }
     da_push(&out->functions, main_func);
 
     return true;
 }
-bool generate_ir_statement(const AstTree *tree, const AstStatement *st, IRFunction *out) {
+bool generate_ssa_statement(const AstTree *tree, const AstStatement *st, SSAFunction *out) {
     ASSERT(st, "Sanity check");
     switch (st->type) {
     case AST_RETURN: {
         if (!st->ret.has_expr) {
-            da_push(&out->body, (IRStatement){.type = IRST_RETURN_EMPTY});
+            da_push(&out->body, (SSAStatement){.type = SSAST_RETURN_EMPTY});
             return true;
         } else {
-            IRValue value = {0};
-            if (!generate_ir_expr(tree, &st->ret.return_expr, &value, out)) return false;
-            IRStatement st = (IRStatement){.type = IRST_RETURN, .ret = {value}};
+            SSAValue value = {0};
+            if (!generate_ssa_expr(tree, &st->ret.return_expr, &value, out)) return false;
+            SSAStatement st = (SSAStatement){.type = SSAST_RETURN, .ret = {value}};
             da_push(&out->body, st);
             return true;
         }
     }
     case AST_LET: {
-        IRValue variable_value = {0};
-        if (!generate_ir_expr(tree, &st->let.value, &variable_value, out)) return false;
+        SSAValue variable_value = {0};
+        if (!generate_ssa_expr(tree, &st->let.value, &variable_value, out)) return false;
         TempValueIndex place = out->max_temps++;
         NameValuePair pair = {.name = st->let.name, .index = place};
-        IRStatement st = {
-            .type = IRST_ASSIGN,
+        SSAStatement st = {
+            .type = SSAST_ASSIGN,
             .assign = {.place = place, .value = variable_value},
         };
         da_push(&out->body, st);
@@ -48,28 +48,28 @@ bool generate_ir_statement(const AstTree *tree, const AstStatement *st, IRFuncti
                 "statement");
     return false;
 }
-bool generate_ir_expr(const AstTree *tree, const AstExpression *expr, IRValue *out_value, IRFunction *out) {
+bool generate_ssa_expr(const AstTree *tree, const AstExpression *expr, SSAValue *out_value, SSAFunction *out) {
     ASSERT(expr, "Sanity check");
     ASSERT(out_value, "Sanity check");
 
     switch (expr->type) {
     case AET_PRIMARY: {
-        out_value->type = IRVT_CONST;
+        out_value->type = SSAVT_CONST;
         out_value->constant = expr->number;
         return true;
     }
     case AET_BINARY: {
-        IRValue l = {0};
-        IRValue r = {0};
-        if (!generate_ir_expr(tree, expr->bin.l, &l, out)) return false;
-        if (!generate_ir_expr(tree, expr->bin.r, &r, out)) return false;
-        IRValue result = {.type = IRVT_TEMP, .temp = out->max_temps++};
-        IRStatement st = {.binop = {.l = l, .r = r, .result = result}};
+        SSAValue l = {0};
+        SSAValue r = {0};
+        if (!generate_ssa_expr(tree, expr->bin.l, &l, out)) return false;
+        if (!generate_ssa_expr(tree, expr->bin.r, &r, out)) return false;
+        SSAValue result = {.type = SSAVT_TEMP, .temp = out->max_temps++};
+        SSAStatement st = {.binop = {.l = l, .r = r, .result = result}};
         switch (expr->bin.op) {
-        case OT_PLUS: st.type = IRST_ADD; break;
-        case OT_MINUS: st.type = IRST_SUB; break;
-        case OT_MULT: st.type = IRST_MUL; break;
-        case OT_DIV: st.type = IRST_DIV; break;
+        case OT_PLUS: st.type = SSAST_ADD; break;
+        case OT_MINUS: st.type = SSAST_SUB; break;
+        case OT_MULT: st.type = SSAST_MUL; break;
+        case OT_DIV: st.type = SSAST_DIV; break;
         }
         da_push(&out->body, st);
         *out_value = result;
@@ -79,7 +79,7 @@ bool generate_ir_expr(const AstTree *tree, const AstExpression *expr, IRValue *o
     case AET_IDENT: {
         for (size_t i = 0; i < out->variables.count; i++) {
             if (strncmp(out->variables.items[i].name.items, expr->ident.items, expr->ident.count) == 0) {
-                out_value->type = IRVT_TEMP;
+                out_value->type = SSAVT_TEMP;
                 out_value->temp = out->variables.items[i].index;
                 return true;
             }

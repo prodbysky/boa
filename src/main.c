@@ -55,8 +55,8 @@ int main(int argc, char **argv) {
     AstTree tree = {0};
     if (!parser_parse(&p, &tree)) return 1;
 
-    IRModule mod = {0};
-    if (!generate_ir_module(&tree, &mod)) return 1;
+    SSAModule mod = {0};
+    if (!generate_ssa_module(&tree, &mod)) return 1;
 
     Path asm_path = path_from_cstr(c.output_name);
     path_add_ext(&asm_path, "asm");

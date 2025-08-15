@@ -1,5 +1,5 @@
-#ifndef IR_H_
-#define IR_H_
+#ifndef SSA_H_
+#define SSA_H_
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -7,55 +7,55 @@
 #include "../../frontend/parser.h"
 
 typedef enum {
-    IRVT_CONST,
-    IRVT_TEMP,
-} IRValueType;
+    SSAVT_CONST,
+    SSAVT_TEMP,
+} SSAValueType;
 
 typedef uint64_t ConstValue;
 typedef uint64_t TempValueIndex;
 
 typedef struct {
-    IRValueType type;
+    SSAValueType type;
     union {
         ConstValue constant;
         TempValueIndex temp;
     };
-} IRValue;
+} SSAValue;
 
-// IRS lol
+// SSAS lol
 typedef enum {
-    IRST_RETURN,
-    IRST_RETURN_EMPTY,
-    IRST_ADD,
-    IRST_SUB,
-    IRST_MUL,
-    IRST_DIV,
-    IRST_ASSIGN,
-} IRStatementType;
+    SSAST_RETURN,
+    SSAST_RETURN_EMPTY,
+    SSAST_ADD,
+    SSAST_SUB,
+    SSAST_MUL,
+    SSAST_DIV,
+    SSAST_ASSIGN,
+} SSAStatementType;
 
 typedef struct {
-    IRStatementType type;
+    SSAStatementType type;
     union {
         struct {
-            IRValue value;
+            SSAValue value;
         } ret;
         struct {
-            IRValue l;
-            IRValue r;
-            IRValue result;
+            SSAValue l;
+            SSAValue r;
+            SSAValue result;
         } binop;
         struct {
             TempValueIndex place;
-            IRValue value;
+            SSAValue value;
         } assign;
     };
-} IRStatement;
+} SSAStatement;
 
 typedef struct {
-    IRStatement* items;
+    SSAStatement* items;
     size_t count;
     size_t capacity;
-} IRFunctionBody;
+} SSAFunctionBody;
 
 typedef struct {
     StringView name;
@@ -66,27 +66,27 @@ typedef struct {
     NameValuePair* items;
     size_t count;
     size_t capacity;
-} IRNameToValue;
+} SSANameToValue;
 
 typedef struct {
     const char* name;
-    IRFunctionBody body;
+    SSAFunctionBody body;
     size_t max_temps;
-    IRNameToValue variables;
-} IRFunction;
+    SSANameToValue variables;
+} SSAFunction;
 
 typedef struct {
-    IRFunction* items;
+    SSAFunction* items;
     size_t count;
     size_t capacity;
-} IRFunctions;
+} SSAFunctions;
 
 typedef struct {
-    IRFunctions functions;
-} IRModule;
+    SSAFunctions functions;
+} SSAModule;
 
-bool generate_ir_module(const AstTree* ast, IRModule* out);
-bool generate_ir_statement(const AstTree* tree, const AstStatement* st, IRFunction* out);
-bool generate_ir_expr(const AstTree* tree, const AstExpression* expr, IRValue* out_value, IRFunction* out);
+bool generate_ssa_module(const AstTree* ast, SSAModule* out);
+bool generate_ssa_statement(const AstTree* tree, const AstStatement* st, SSAFunction* out);
+bool generate_ssa_expr(const AstTree* tree, const AstExpression* expr, SSAValue* out_value, SSAFunction* out);
 
 #endif
