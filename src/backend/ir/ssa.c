@@ -21,16 +21,85 @@ bool generate_ssa_module(const AstTree *ast, SSAModule *out) {
 // so far will only do dce for instructions after the return statement
 static bool dce(SSAModule *mod);
 
+// does this:
+//     where a + b and if a or b is 0 then changes the statement to be just setting to a or b
+//     where a * b and if a or b is 0 then changes the statement to be just setting to 0
+//     where a / b and if a is 0 then changes the statement to assign 0
+static bool algebraic_simp(SSAModule *mod);
+
 bool optimize_ssa_ir(SSAModule *mod) {
     if (!dce(mod)) return false;
+    // TODO: constant fold
+    if (!algebraic_simp(mod)) return false;
     return true;
 }
+
 static bool dce(SSAModule *mod) {
     for (size_t i = 0; i < mod->functions.count; i++) {
         for (size_t j = 0; j < mod->functions.items[i].body.count; j++) {
             if (mod->functions.items[i].body.items[j].type == SSAST_RETURN ||
                 mod->functions.items[i].body.items[j].type == SSAST_RETURN_EMPTY) {
                 if (mod->functions.items[i].body.capacity > j + 1) { mod->functions.items[i].body.count = j + 1; }
+            }
+        }
+    }
+    return true;
+}
+
+static bool algebraic_simp(SSAModule *mod) {
+    for (size_t i = 0; i < mod->functions.count; i++) {
+        for (size_t j = 0; j < mod->functions.items[i].body.count; j++) {
+            SSAStatement *s = &mod->functions.items[i].body.items[j];
+
+            switch (s->type) {
+            case SSAST_ADD:
+            case SSAST_SUB: {
+                if (s->binop.r.type == SSAVT_CONST && s->binop.r.constant == 0) {
+                    *s = (SSAStatement){.type = SSAST_ASSIGN,
+                                        .assign = {.place = s->binop.result.temp, .value = s->binop.l}};
+                    break;
+                }
+                if (s->binop.l.type == SSAVT_CONST && s->binop.l.constant == 0) {
+                    *s = (SSAStatement){.type = SSAST_ASSIGN,
+                                        .assign = {.place = s->binop.result.temp, .value = s->binop.r}};
+                    break;
+                }
+                break;
+            }
+            case SSAST_MUL: {
+                if (s->binop.r.type == SSAVT_CONST && s->binop.r.constant == 0) {
+                    *s = (SSAStatement){.type = SSAST_ASSIGN,
+                                        .assign = {
+                                            .place = s->binop.result.temp,
+                                            .value = (SSAValue){.type = SSAVT_CONST, .constant = 0},
+                                        }};
+                    break;
+                }
+                if (s->binop.l.type == SSAVT_CONST && s->binop.l.constant == 0) {
+                    *s = (SSAStatement){.type = SSAST_ASSIGN,
+                                        .assign = {
+                                            .place = s->binop.result.temp,
+                                            .value = (SSAValue){.type = SSAVT_CONST, .constant = 0},
+                                        }};
+                    break;
+                }
+                break;
+            }
+            case SSAST_DIV: {
+                if (s->binop.l.type == SSAVT_CONST && s->binop.l.constant == 0) {
+                    *s = (SSAStatement){.type = SSAST_ASSIGN,
+                                        .assign = {
+                                            .place = s->binop.result.temp,
+                                            .value = (SSAValue){.type = SSAVT_CONST, .constant = 0},
+                                        }};
+                    break;
+                }
+
+                break;
+            }
+            case SSAST_ASSIGN:
+            case SSAST_RETURN:
+            case SSAST_RETURN_EMPTY: break;
             }
         }
     }
