@@ -6,8 +6,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef uint32_t PseudoReg;
-
 typedef enum {
     PRT_MOV,
     PRT_ADD,
@@ -21,29 +19,17 @@ typedef struct {
     PseudoRegInstructionType type;
     union {
         struct {
-            PseudoReg dest;
-            bool src_is_imm;
-            union {
-                PseudoReg src;
-                uint64_t imm;
-            };
+            TempValueIndex dest;
+            SSAValue src;
         } mov;
         struct {
-            PseudoReg dest;
-            bool src_is_imm;
-            union {
-                PseudoReg src;
-                uint64_t imm;
-            };
-
+            SSAValue dest;
+            SSAValue src_1;
+            SSAValue src_2;
         } add, sub, mul, div;
         struct {
             bool with_value;
-            bool src_is_imm;
-            union {
-                PseudoReg src;
-                uint64_t imm;
-            };
+            SSAValue value;
         } ret;
     };
 } PseudoRegInstruction;
@@ -56,7 +42,6 @@ typedef struct {
 
 typedef struct {
     PseudoRegFunctionBody body;
-    PseudoReg current_reg;
     const char* name;
 } PseudoRegFunction;
 
@@ -70,8 +55,6 @@ typedef struct {
     PseudoRegFunctions fs;
 } PseudoRegModule;
 
-bool pseudo_reg_convert_module(const IRModule* ssa_mod, PseudoRegModule* out);
-
-
+bool pseudo_reg_convert_module(const SSAModule* ssa_mod, PseudoRegModule* out);
 
 #endif

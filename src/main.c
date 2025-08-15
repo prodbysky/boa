@@ -1,4 +1,5 @@
 #include "arena.h"
+#include "backend/ir/pseudo_reg.h"
 #include "log.h"
 #include "sv.h"
 #include "util.h"
@@ -57,6 +58,9 @@ int main(int argc, char **argv) {
 
     SSAModule mod = {0};
     if (!generate_ssa_module(&tree, &mod)) return 1;
+
+    PseudoRegModule pr_mod = {0};
+    if (!pseudo_reg_convert_module(&mod, &pr_mod)) return 1;
 
     Path asm_path = path_from_cstr(c.output_name);
     path_add_ext(&asm_path, "asm");
