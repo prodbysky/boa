@@ -17,127 +17,16 @@ bool generate_ssa_module(const AstTree *ast, SSAModule *out) {
     return true;
 }
 
-static bool constant_fold_ir_mod(SSAModule *mod);
-
 bool optimize_ssa_ir(SSAModule *mod) {
-    if (!constant_fold_ir_mod(mod)) return false;
+    (void)mod;
+    log_message(LL_WARN, "Running noop optimize_ssa_ir");
     return true;
 }
 
-typedef struct {
-    TempValueIndex index;
-    uint64_t value;
-} IndexValuePair;
+/*
+*/
 
-typedef struct {
-    IndexValuePair *items;
-    size_t count;
-    size_t capacity;
-} KnownIndexes;
 
-static bool is_known(const KnownIndexes *current, const SSAValue *value, uint64_t *out) {
-    if (value->type == SSAVT_CONST) {
-        *out = value->constant;
-        return true;
-    }
-    for (size_t i = 0; i < current->count; i++) {
-        if (current->items[i].index == value->temp) {
-            *out = current->items[i].value;
-            return true;
-        }
-    }
-    return false;
-}
-
-static bool constant_fold_ir_mod(SSAModule *mod) {
-    for (size_t i = 0; i < mod->functions.count; i++) {
-        SSAFunction *f = &mod->functions.items[i];
-        // TODO: Here when we have labels the known at compile time temp index array should be cleared
-
-        bool folded_something = false;
-        KnownIndexes indexes = {0};
-        do {
-            folded_something = false;
-            for (size_t j = 0; j < f->body.count; j++) {
-                SSAStatement *st = &f->body.items[j];
-                switch (st->type) {
-                case SSAST_ASSIGN: {
-                    if (st->assign.value.type == SSAVT_CONST) {
-                        IndexValuePair pair = {.index = st->assign.place, .value = st->assign.value.constant};
-                        da_push(&indexes, pair);
-                    }
-                    break;
-                }
-                case SSAST_ADD: {
-                    uint64_t l, r;
-                    if (is_known(&indexes, &st->binop.l, &l) && is_known(&indexes, &st->binop.r, &r)) {
-                        *st = (SSAStatement){
-                            .type = SSAST_ASSIGN,
-                            .assign =
-                                {
-                                    .place = st->binop.result.temp,
-                                    .value = (SSAValue){.type = SSAVT_CONST, .constant = l + r},
-                                },
-                        };
-                        folded_something = true;
-                    }
-                    break;
-                }
-                case SSAST_SUB: {
-                    uint64_t l, r;
-                    if (is_known(&indexes, &st->binop.l, &l) && is_known(&indexes, &st->binop.r, &r)) {
-                        *st = (SSAStatement){
-                            .type = SSAST_ASSIGN,
-                            .assign =
-                                {
-                                    .place = st->binop.result.temp,
-                                    .value = (SSAValue){.type = SSAVT_CONST, .constant = l - r},
-                                },
-                        };
-                        folded_something = true;
-                    }
-                    break;
-                }
-                case SSAST_MUL: {
-                    uint64_t l, r;
-                    if (is_known(&indexes, &st->binop.l, &l) && is_known(&indexes, &st->binop.r, &r)) {
-                        *st = (SSAStatement){
-                            .type = SSAST_ASSIGN,
-                            .assign =
-                                {
-                                    .place = st->binop.result.temp,
-                                    .value = (SSAValue){.type = SSAVT_CONST, .constant = l * r},
-                                },
-                        };
-                        folded_something = true;
-                    }
-                    break;
-                }
-                case SSAST_DIV: {
-                    uint64_t l, r;
-                    if (is_known(&indexes, &st->binop.l, &l) && is_known(&indexes, &st->binop.r, &r)) {
-                        *st = (SSAStatement){
-                            .type = SSAST_ASSIGN,
-                            .assign =
-                                {
-                                    .place = st->binop.result.temp,
-                                    .value = (SSAValue){.type = SSAVT_CONST, .constant = l / r},
-                                },
-                        };
-                        folded_something = true;
-                    }
-                    break;
-                }
-                case SSAST_RETURN:
-                case SSAST_RETURN_EMPTY: break;
-                }
-            }
-            indexes.count = 0;
-        } while (folded_something);
-        if (indexes.items != NULL) free(indexes.items);
-    }
-    return true;
-}
 
 bool generate_ssa_statement(const AstTree *tree, const AstStatement *st, SSAFunction *out) {
     ASSERT(st, "Sanity check");
@@ -168,7 +57,8 @@ bool generate_ssa_statement(const AstTree *tree, const AstStatement *st, SSAFunc
         return true;
     } break;
     }
-    UNREACHABLE("This shouldn't ever be reached, so all statements should early return from their case in the switch "
+    UNREACHABLE("This shouldn't ever be reached, so all statements should early return from their case in "
+                "the switch "
                 "statement");
     return false;
 }
