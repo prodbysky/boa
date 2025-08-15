@@ -7,48 +7,49 @@
 #include <stdlib.h>
 
 #define TODO()                                                                                                         \
-    do {                                                                                                               \
-        log_message(LL_ERROR, "Not implemented yet");                                                                  \
-        exit(1);                                                                                                       \
-    } while (false)
+    log_message(LL_ERROR, "Not implemented yet");                                                                      \
+    exit(1);
 
 #define ASSERT(cond, msg)                                                                                              \
-    do {                                                                                                               \
-        if (!(cond)) {                                                                                                 \
-            log_message(LL_ERROR, "Assert Failed: %s", msg);                                                           \
-            exit(1);                                                                                                   \
-        }                                                                                                              \
-    } while (false)
+    if (!(cond)) {                                                                                                     \
+        log_message(LL_ERROR, "Assert Failed: %s", msg);                                                               \
+        exit(1);                                                                                                       \
+    }
 
 #define UNREACHABLE(msg)                                                                                               \
     log_message(LL_ERROR, "Unreachable reached: %s", msg);                                                             \
     exit(1);
 
 #define da_push(arr, item)                                                                                             \
-    do {                                                                                                               \
-        if ((arr)->capacity == 0) {                                                                                    \
-            (arr)->items = malloc(sizeof(*(arr)->items) * 16);                                                         \
-            ASSERT((arr)->items, "Buy more RAM LOLOL");                                                                \
-            (arr)->count = 0;                                                                                          \
-            (arr)->capacity = 16;                                                                                      \
-        }                                                                                                              \
-        if ((arr)->capacity <= (arr)->count) {                                                                         \
-            ASSERT((arr)->items, "Buy more RAM LOLOL");                                                                \
-            (arr)->items = realloc((arr)->items, sizeof(*(arr)->items) * (arr)->capacity * 1.5);                       \
-            ASSERT((arr)->items, "Buy more RAM LOLOL");                                                                \
-            (arr)->capacity *= 1.5;                                                                                    \
-        }                                                                                                              \
-        (arr)->items[(arr)->count++] = item;                                                                           \
-    } while (false)
+    if ((arr)->capacity == 0) {                                                                                        \
+        (arr)->items = malloc(sizeof(*(arr)->items) * 16);                                                             \
+        ASSERT((arr)->items, "Buy more RAM LOLOL");                                                                    \
+        (arr)->count = 0;                                                                                              \
+        (arr)->capacity = 16;                                                                                          \
+    }                                                                                                                  \
+    if ((arr)->capacity <= (arr)->count) {                                                                             \
+        ASSERT((arr)->items, "Buy more RAM LOLOL");                                                                    \
+        (arr)->items = realloc((arr)->items, sizeof(*(arr)->items) * (arr)->capacity * 1.5);                           \
+        ASSERT((arr)->items, "Buy more RAM LOLOL");                                                                    \
+        (arr)->capacity *= 1.5;                                                                                        \
+    }                                                                                                                  \
+    (arr)->items[(arr)->count++] = item;
+
+#define da_remove(arr, index)                                                                                          \
+    ASSERT((arr)->count >= index || index >= 0, "Tried to remove invalid index from array");                           \
+    if (index < (arr)->count - 1) {                                                                                    \
+        memmove(&(arr)->items[index], &(arr)->items[index + 1], ((arr)->size - index - 1) * sizeof(*(arr)->items));    \
+    }                                                                                                                  \
+    (arr)->count--;
 
 typedef struct {
     String path;
 } Path;
 
-Path path_from_cstr(char* cstr);
-void path_add_ext(Path* path, const char* ext);
+Path path_from_cstr(char *cstr);
+void path_add_ext(Path *path, const char *ext);
 
-char* path_to_cstr(Path* path);
+char *path_to_cstr(Path *path);
 
 /*
  * Argument `file_name`: input file name (null-terminated C-str)

@@ -19,26 +19,33 @@ typedef struct {
     char *exe_name;
     char *input_name;
     char *output_name;
+    bool should_free_output_name;
     bool keep_build_artifacts;
 } Config;
 
 bool parse_config(Config *conf, int argc, char **argv);
 
 int main(int argc, char **argv) {
+    int result = 0;
     Config c = {0};
     if (!parse_config(&c, argc, argv)) {
         usage(c.exe_name);
-        return 1;
+        result = 1;
+        goto defer;
     }
 
     SourceFile file = {0};
-    if (!read_source_file(c.input_name, &file)) return 1;
+    if (!read_source_file(c.input_name, &file)) {
+        result = 1;
+        goto defer;
+    }
     Lexer l = {.begin_of_src = file.src.items, .file = FILE_VIEW_FROM_FILE(file)};
     Tokens tokens = {0};
 
     if (!lexer_run(&l, &tokens)) {
         log_diagnostic(LL_ERROR, "Failed to lex source code");
-        return 1;
+        result = 1;
+        goto defer;
     }
 
     Arena arena = arena_new(1024);
@@ -54,11 +61,20 @@ int main(int argc, char **argv) {
             },
     };
     AstTree tree = {0};
-    if (!parser_parse(&p, &tree)) return 1;
+    if (!parser_parse(&p, &tree)) {
+        result = 1;
+        goto defer;
+    }
 
     SSAModule mod = {0};
-    if (!generate_ssa_module(&tree, &mod)) return 1;
-    if (!optimize_ssa_ir(&mod)) return 1;
+    if (!generate_ssa_module(&tree, &mod)) {
+        result = 1;
+        goto defer;
+    }
+    if (!optimize_ssa_ir(&mod)) {
+        result = 1;
+        goto defer;
+    }
 
     // PseudoRegModule pr_mod = {0};
     // if (!pseudo_reg_convert_module(&mod, &pr_mod)) return 1;
@@ -69,25 +85,52 @@ int main(int argc, char **argv) {
     Path o_path = path_from_cstr(c.output_name);
     path_add_ext(&o_path, "o");
 
-    FILE *asm_file = fopen(path_to_cstr(&asm_path), "wb");
-    nasm_x86_64_linux_generate_file(asm_file, &mod);
+    char* asm_path_c = path_to_cstr(&asm_path);
+    char* o_path_c = path_to_cstr(&o_path);
+
+    free(asm_path.path.items);
+    free(o_path.path.items);
+
+    FILE *asm_file = fopen(asm_path_c, "wb");
+    if (!nasm_x86_64_linux_generate_file(asm_file, &mod)) {
+        result = 1;
+        goto defer;
+    }
     fclose(asm_file);
 
-    if (run_program("nasm", (char *[]){"nasm", path_to_cstr(&asm_path), "-f", "elf64", "-o", path_to_cstr(&o_path),
+    if (run_program("nasm", (char *[]){"nasm", asm_path_c, "-f", "elf64", "-o", o_path_c,
                                        NULL}) != 0) {
         log_diagnostic(LL_ERROR, "nasm failed");
-        return 1;
+        result = 1;
+        goto defer;
     }
-    if (run_program("ld", (char *[]){"ld", path_to_cstr(&o_path), "-o", c.output_name, NULL}) != 0) {
+    if (run_program("ld", (char *[]){"ld", o_path_c, "-o", c.output_name, NULL}) != 0) {
         if (!c.keep_build_artifacts) {
-            run_program("rm", (char *[]){"rm", path_to_cstr(&o_path), path_to_cstr(&asm_path), NULL});
+            run_program("rm", (char *[]){"rm", o_path_c, asm_path_c, NULL});
         }
         log_diagnostic(LL_ERROR, "ld failed");
-        return 1;
+        result = 1;
+        goto defer;
     }
     if (!c.keep_build_artifacts) {
-        run_program("rm", (char *[]){"rm", path_to_cstr(&o_path), path_to_cstr(&asm_path), NULL});
+        run_program("rm", (char *[]){"rm", o_path_c, asm_path_c, NULL});
     }
+defer:
+    if (tree.items != NULL) free(tree.items);
+    if (mod.functions.items != NULL) {
+        for (size_t i = 0; i < mod.functions.count; i++) {
+            if (mod.functions.items[i].body.items != NULL) free(mod.functions.items[i].body.items);
+            if (mod.functions.items[i].variables.items != NULL) free(mod.functions.items[i].variables.items);
+        }
+        free(mod.functions.items);
+    }
+    arena_free(&arena);
+    if (tokens.items != NULL) free(tokens.items);
+    if (file.src.items != NULL) free(file.src.items);
+    free(asm_path_c);
+    free(o_path_c);
+    if (c.should_free_output_name) free(c.output_name);
+    return result;
 }
 
 bool parse_config(Config *conf, int argc, char **argv) {
@@ -141,6 +184,7 @@ bool parse_config(Config *conf, int argc, char **argv) {
         size_t len = strlen(conf->input_name) - 3;
         conf->output_name = malloc(sizeof(char) * (len + 1));
         conf->output_name[len] = 0;
+        conf->should_free_output_name = true;
         snprintf(conf->output_name, len, "%s", conf->input_name);
     }
 

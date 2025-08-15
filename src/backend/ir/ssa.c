@@ -20,7 +20,7 @@ bool generate_ssa_module(const AstTree *ast, SSAModule *out) {
 static bool constant_fold_ir_mod(SSAModule *mod);
 
 bool optimize_ssa_ir(SSAModule *mod) {
-    constant_fold_ir_mod(mod);
+    if (!constant_fold_ir_mod(mod)) return false;
     return true;
 }
 
@@ -55,9 +55,9 @@ static bool constant_fold_ir_mod(SSAModule *mod) {
         // TODO: Here when we have labels the known at compile time temp index array should be cleared
 
         bool folded_something = false;
+        KnownIndexes indexes = {0};
         do {
             folded_something = false;
-            KnownIndexes indexes = {0};
             for (size_t j = 0; j < f->body.count; j++) {
                 SSAStatement *st = &f->body.items[j];
                 switch (st->type) {
@@ -132,7 +132,9 @@ static bool constant_fold_ir_mod(SSAModule *mod) {
                 case SSAST_RETURN_EMPTY: break;
                 }
             }
+            indexes.count = 0;
         } while (folded_something);
+        if (indexes.items != NULL) free(indexes.items);
     }
     return true;
 }
