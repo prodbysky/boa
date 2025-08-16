@@ -27,10 +27,129 @@ static bool dce(SSAModule *mod);
 //     where a / b and if a is 0 then changes the statement to assign 0
 static bool algebraic_simp(SSAModule *mod);
 
+static bool constant_folding(SSAModule *mod);
+
 bool optimize_ssa_ir(SSAModule *mod) {
     if (!dce(mod)) return false;
-    // TODO: constant fold
+    if (!constant_folding(mod)) return false;
     if (!algebraic_simp(mod)) return false;
+    return true;
+}
+
+typedef struct {
+    TempValueIndex idx;
+    uint64_t val;
+} KnownValue;
+
+typedef struct {
+    KnownValue *items;
+    size_t count;
+    size_t capacity;
+} KnownValues;
+
+static bool get_if_known(const KnownValues *vs, const SSAValue *v, uint64_t *out) {
+    if (v->type == SSAVT_CONST) {
+        *out = v->constant;
+        return true;
+    }
+    for (size_t i = 0; i < vs->count; i++) {
+        if (vs->items[i].idx == v->temp) {
+            *out = vs->items[i].val;
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool constant_folding(SSAModule *mod) {
+    for (size_t i = 0; i < mod->functions.count; i++) {
+        SSAFunction *f = &mod->functions.items[i];
+        KnownValues vs = {0};
+        for (size_t j = 0; j < f->body.count; j++) {
+            SSAStatement *st_old = &f->body.items[j];
+            switch (st_old->type) {
+            case SSAST_ASSIGN: {
+                if (st_old->assign.value.type == SSAVT_CONST) {
+                    KnownValue v = {.idx = st_old->assign.place, .val = st_old->assign.value.constant};
+                    da_push(&vs, v);
+                    break;
+                }
+                uint64_t const_v = 0;
+                if (get_if_known(&vs, &st_old->assign.value, &const_v)) {
+                    KnownValue v = {.idx = st_old->assign.place, .val = const_v};
+                    da_push(&vs, v);
+                    SSAStatement st_new = *st_old;
+                    st_new.assign.value = (SSAValue){.type = SSAVT_CONST, .constant = const_v};
+                    *st_old = st_new;
+                }
+                break;
+            }
+            case SSAST_MUL: {
+                uint64_t l, r;
+                if (get_if_known(&vs, &st_old->binop.l, &l) && get_if_known(&vs, &st_old->binop.r, &r)) {
+                    KnownValue v = {.idx = st_old->binop.result.temp, .val = l * r};
+                    SSAStatement st_new = {.type = SSAST_ASSIGN,
+                                           .assign = {.place = st_old->binop.result.temp,
+                                                      .value = (SSAValue){.type = SSAVT_CONST, .constant = l * r}}};
+                    da_push(&vs, v);
+                    *st_old = st_new;
+                }
+                break;
+            }
+            case SSAST_DIV: {
+                uint64_t l, r;
+                if (get_if_known(&vs, &st_old->binop.l, &l) && get_if_known(&vs, &st_old->binop.r, &r)) {
+                    KnownValue v = {.idx = st_old->binop.result.temp, .val = l / r};
+                    SSAStatement st_new = {.type = SSAST_ASSIGN,
+                                           .assign = {.place = st_old->binop.result.temp,
+                                                      .value = (SSAValue){.type = SSAVT_CONST, .constant = l / r}}};
+                    da_push(&vs, v);
+                    *st_old = st_new;
+                }
+                break;
+            }
+            case SSAST_ADD: {
+                uint64_t l, r;
+                if (get_if_known(&vs, &st_old->binop.l, &l) && get_if_known(&vs, &st_old->binop.r, &r)) {
+                    KnownValue v = {.idx = st_old->binop.result.temp, .val = l + r};
+                    SSAStatement st_new = {.type = SSAST_ASSIGN,
+                                           .assign = {.place = st_old->binop.result.temp,
+                                                      .value = (SSAValue){.type = SSAVT_CONST, .constant = l + r}}};
+                    da_push(&vs, v);
+                    *st_old = st_new;
+                }
+                break;
+            }
+            case SSAST_SUB: {
+                uint64_t l, r;
+                if (get_if_known(&vs, &st_old->binop.l, &l) && get_if_known(&vs, &st_old->binop.r, &r)) {
+                    KnownValue v = {.idx = st_old->binop.result.temp, .val = l - r};
+                    SSAStatement st_new = {.type = SSAST_ASSIGN,
+                                           .assign = {.place = st_old->binop.result.temp,
+                                                      .value = (SSAValue){.type = SSAVT_CONST, .constant = l - r}}};
+                    da_push(&vs, v);
+                    *st_old = st_new;
+                }
+                break;
+            }
+            case SSAST_RETURN: {
+                uint64_t v = 0;
+                if (get_if_known(&vs, &st_old->ret.value, &v)) {
+                    st_old->ret.value = (SSAValue){.type = SSAVT_CONST, .constant = v};
+                    break;
+                }
+                break;
+            }
+            case SSAST_RETURN_EMPTY: break;
+            default:
+                log_message(LL_INFO, "%ld", st_old->type);
+                TODO();
+                break;
+            }
+        }
+        if (vs.items != NULL) free(vs.items);
+    }
+
     return true;
 }
 
