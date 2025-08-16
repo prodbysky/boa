@@ -1,5 +1,4 @@
 #include "arena.h"
-#include "backend/ir/pseudo_reg.h"
 #include "log.h"
 #include "sv.h"
 #include "util.h"
@@ -72,13 +71,10 @@ int main(int argc, char **argv) {
         result = 1;
         goto defer;
     }
-    if (!optimize_ssa_ir(&mod)) {
-        result = 1;
-        goto defer;
-    }
-
-    // PseudoRegModule pr_mod = {0};
-    // if (!pseudo_reg_convert_module(&mod, &pr_mod)) return 1;
+    // if (!optimize_ssa_ir(&mod)) {
+    //     result = 1;
+    //     goto defer;
+    // }
 
     Path asm_path = path_from_cstr(c.output_name);
     path_add_ext(&asm_path, "asm");
@@ -86,8 +82,8 @@ int main(int argc, char **argv) {
     Path o_path = path_from_cstr(c.output_name);
     path_add_ext(&o_path, "o");
 
-    char* asm_path_c = path_to_cstr(&asm_path);
-    char* o_path_c = path_to_cstr(&o_path);
+    char *asm_path_c = path_to_cstr(&asm_path);
+    char *o_path_c = path_to_cstr(&o_path);
 
     free(asm_path.path.items);
     free(o_path.path.items);
@@ -99,23 +95,18 @@ int main(int argc, char **argv) {
     }
     fclose(asm_file);
 
-    if (run_program("nasm", (char *[]){"nasm", asm_path_c, "-f", "elf64", "-o", o_path_c,
-                                       NULL}) != 0) {
+    if (run_program("nasm", (char *[]){"nasm", asm_path_c, "-f", "elf64", "-o", o_path_c, NULL}) != 0) {
         log_diagnostic(LL_ERROR, "nasm failed");
         result = 1;
         goto defer;
     }
     if (run_program("ld", (char *[]){"ld", o_path_c, "-o", c.output_name, NULL}) != 0) {
-        if (!c.keep_build_artifacts) {
-            run_program("rm", (char *[]){"rm", o_path_c, asm_path_c, NULL});
-        }
+        if (!c.keep_build_artifacts) { run_program("rm", (char *[]){"rm", o_path_c, asm_path_c, NULL}); }
         log_diagnostic(LL_ERROR, "ld failed");
         result = 1;
         goto defer;
     }
-    if (!c.keep_build_artifacts) {
-        run_program("rm", (char *[]){"rm", o_path_c, asm_path_c, NULL});
-    }
+    if (!c.keep_build_artifacts) { run_program("rm", (char *[]){"rm", o_path_c, asm_path_c, NULL}); }
 defer:
     if (tree.items != NULL) free(tree.items);
     if (mod.functions.items != NULL) {
