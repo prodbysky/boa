@@ -84,8 +84,10 @@ bool read_file(const char *file_name, String *s) {
     size_t read = fread(s->items, sizeof(char), size, file);
     if (read != size) {
         log_message(LL_ERROR, "Failed to read whole file %s");
+        fclose(file);
         return false;
     }
+    fclose(file);
 
     return true;
 }
