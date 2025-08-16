@@ -20,6 +20,7 @@ typedef struct {
     char *output_name;
     bool should_free_output_name;
     bool keep_build_artifacts;
+    bool dont_optimize;
 } Config;
 
 bool parse_config(Config *conf, int argc, char **argv);
@@ -28,11 +29,26 @@ int main(int argc, char **argv) {
     int result = 0;
     Config c = {0};
 
+    char *asm_path_c = NULL;
+    char *o_path_c = NULL;
+
     if (!parse_config(&c, argc, argv)) {
         usage(c.exe_name);
         result = 1;
         goto defer;
     }
+
+    Path asm_path = path_from_cstr(c.output_name);
+    path_add_ext(&asm_path, "asm");
+
+    Path o_path = path_from_cstr(c.output_name);
+    path_add_ext(&o_path, "o");
+
+    asm_path_c = path_to_cstr(&asm_path);
+    o_path_c = path_to_cstr(&o_path);
+
+    free(asm_path.path.items);
+    free(o_path.path.items);
 
     SourceFile file = {0};
     if (!read_source_file(c.input_name, &file)) {
@@ -71,22 +87,12 @@ int main(int argc, char **argv) {
         result = 1;
         goto defer;
     }
-    if (!optimize_ssa_ir(&mod)) {
-        result = 1;
-        goto defer;
+    if (!c.dont_optimize) {
+        if (!optimize_ssa_ir(&mod)) {
+            result = 1;
+            goto defer;
+        }
     }
-
-    Path asm_path = path_from_cstr(c.output_name);
-    path_add_ext(&asm_path, "asm");
-
-    Path o_path = path_from_cstr(c.output_name);
-    path_add_ext(&o_path, "o");
-
-    char *asm_path_c = path_to_cstr(&asm_path);
-    char *o_path_c = path_to_cstr(&o_path);
-
-    free(asm_path.path.items);
-    free(o_path.path.items);
 
     FILE *asm_file = fopen(asm_path_c, "wb");
     if (!nasm_x86_64_linux_generate_file(asm_file, &mod)) {
@@ -152,6 +158,8 @@ bool parse_config(Config *conf, int argc, char **argv) {
         } else if (strcmp(*argv, "-help") == 0) {
             usage(conf->exe_name);
             exit(0);
+        } else if (strcmp(*argv, "-no-opt") == 0) {
+            conf->dont_optimize = true;
         } else {
             if (**argv == '-') {
                 log_diagnostic(LL_ERROR, "Unknown flag supplied");
@@ -187,7 +195,8 @@ static void usage(char *program_name) {
     log_diagnostic(LL_INFO, "Usage: ");
     log_diagnostic(LL_INFO, "  %s <input.boa> [FLAGS]", program_name);
     log_diagnostic(LL_INFO, "  [FLAGS]:");
-    log_diagnostic(LL_INFO, "    -help : show this help message");
-    log_diagnostic(LL_INFO, "    -o : Customize the output file name (format: -o <name>)");
-    log_diagnostic(LL_INFO, "    -keep-artifacts : Keep the build artifacts (.asm, .o files)");
+    log_diagnostic(LL_INFO, "    -help          : Show this help message");
+    log_diagnostic(LL_INFO, "    -o             : Customize the output file name (format: -o <name>)");
+    log_diagnostic(LL_INFO, "    -keep-artifacts: Keep the build artifacts (.asm, .o files)");
+    log_diagnostic(LL_INFO, "    -no-opt        : Dont optimize the code");
 }
