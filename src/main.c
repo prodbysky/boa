@@ -71,10 +71,10 @@ int main(int argc, char **argv) {
         result = 1;
         goto defer;
     }
-    // if (!optimize_ssa_ir(&mod)) {
-    //     result = 1;
-    //     goto defer;
-    // }
+    if (!optimize_ssa_ir(&mod)) {
+        result = 1;
+        goto defer;
+    }
 
     Path asm_path = path_from_cstr(c.output_name);
     path_add_ext(&asm_path, "asm");

@@ -155,7 +155,8 @@ static void move_value_into_value(FILE *sink, const SSAValue *from, const SSAVal
     // Store register into destination
     fprintf(sink, "  mov ");
     value_asm_repr(sink, into);
-    fprintf(sink, ", rax\n");}
+    fprintf(sink, ", rax\n");
+}
 
 static void emit_add_reg_value(FILE *sink, const char *reg, const SSAValue *value) {
     fprintf(sink, "  add %s, ", reg);

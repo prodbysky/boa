@@ -177,7 +177,7 @@ static bool dce(SSAModule *mod) {
                 if (mod->functions.items[i].body.capacity > j + 1) {
                     mod->functions.items[i].body.count = j + 1;
                     changed = true;
-                    continue;
+                    break;
                 }
             }
         }
