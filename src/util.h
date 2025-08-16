@@ -38,7 +38,7 @@
 #define da_remove(arr, index)                                                                                          \
     ASSERT((arr)->count >= index && index >= 0, "Tried to remove invalid index from array");                           \
     if (index < (arr)->count - 1) {                                                                                    \
-        memmove(&(arr)->items[index], &(arr)->items[index + 1], ((arr)->size - index - 1) * sizeof(*(arr)->items));    \
+        memmove(&(arr)->items[index], &(arr)->items[index + 1], ((arr)->count - index - 1) * sizeof(*(arr)->items));   \
     }                                                                                                                  \
     (arr)->count--;
 
