@@ -333,6 +333,7 @@ bool generate_ssa_statement(const AstTree *tree, const AstStatement *st, SSAFunc
         da_push(&out->variables, pair);
         return true;
     } break;
+    case AST_ASSIGN: TODO(); break;
     }
     UNREACHABLE("This shouldn't ever be reached, so all statements should early return from their case in "
                 "the switch "

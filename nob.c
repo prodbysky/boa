@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
     NOB_GO_REBUILD_URSELF(argc, argv);
 
 
-    if (argc > 1 && strcmp(argv[1], "test")) {
+    if (argc > 1 && strcmp(argv[1], "test") == 0) {
         if (!run_tests()) {
             nob_log(NOB_ERROR, "Some tests failed. Go check the logs :)");
             return 1;
@@ -34,11 +34,6 @@ int main(int argc, char *argv[]) {
 
     mkdir_if_not_exists(BUILD_DIR);
     mkdir_if_not_exists(BUILD_DIR "/" TEST_DIR);
-
-    if (!run_tests()) {
-        nob_log(NOB_ERROR, "Some tests failed. Go check the logs :)");
-        return 1;
-    }
 
     cmd_append(&cmd, "cc", SOURCES, "src/main.c", "-o", BUILD_DIR "/boa");
     common_flags(&cmd);

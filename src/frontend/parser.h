@@ -30,7 +30,7 @@ typedef struct AstExpression {
     };
 } AstExpression;
 
-typedef enum { AST_RETURN, AST_LET } AstStatementType;
+typedef enum { AST_RETURN, AST_LET, AST_ASSIGN } AstStatementType;
 
 typedef struct {
     AstStatementType type;
@@ -44,7 +44,7 @@ typedef struct {
         struct {
             StringView name;
             AstExpression value;
-        } let;
+        } let, assign;
     };
 } AstStatement;
 

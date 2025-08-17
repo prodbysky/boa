@@ -147,53 +147,70 @@ bool parser_parse_term(Parser *parser, AstExpression *out) {
 }
 
 bool parser_parse_statement(Parser *parser, AstStatement *out) {
-    ASSERT(parser_peek(parser, 0).type == TT_KEYWORD, "The caller ensures this condition");
-
     out->begin = parser->tokens.items[0].begin;
+    Token t = parser_pop(parser);
 
-    switch (parser_pop(parser).keyword) {
-    case KT_NO: UNREACHABLE("This is an error value for the KeywordType enum");
-    case KT_RETURN: {
-        if (parser_is_empty(parser)) {
-            log_diagnostic(LL_ERROR, "Expected a semicolon or an expression here not EOF");
-            report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
-                         parser->origin.src.items, parser->origin.name);
-            return false;
+    if (t.type == TT_KEYWORD) {
+        switch (t.keyword) {
+        case KT_NO: UNREACHABLE("This is an error value for the KeywordType enum");
+        case KT_RETURN: {
+            if (parser_is_empty(parser)) {
+                log_diagnostic(LL_ERROR, "Expected a semicolon or an expression here not EOF");
+                report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                             parser->origin.src.items, parser->origin.name);
+                return false;
+            }
+            out->type = AST_RETURN;
+            switch (parser_peek(parser, 0).type) {
+            case TT_SEMICOLON: {
+                out->ret.has_expr = false;
+                parser_pop(parser);
+                out->len = (parser->last_token.begin + parser->last_token.len) - out->begin;
+                return true;
+            }
+            default: {
+                if (!parser_parse_expr(parser, &out->ret.return_expr)) return false;
+                out->ret.has_expr = true;
+                break;
+            }
+            }
+            break;
         }
-        out->type = AST_RETURN;
-        switch (parser_peek(parser, 0).type) {
-        case TT_SEMICOLON: {
-            out->ret.has_expr = false;
-            parser_pop(parser);
-            out->len = (parser->last_token.begin + parser->last_token.len) - out->begin;
-            return true;
-        }
-        default: {
-            if (!parser_parse_expr(parser, &out->ret.return_expr)) return false;
-            out->ret.has_expr = true;
+        case KT_LET: {
+            if (!parser_expect_ident(parser, &out->let.name)) {
+                log_diagnostic(LL_ERROR, "Expected a name for a variable definition here");
+                report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                             parser->origin.src.items, parser->origin.name);
+                return false;
+            }
+            if (!parser_expect_and_skip(parser, TT_ASSIGN)) {
+                log_diagnostic(LL_ERROR, "Expected `=` here after the name of the let binding");
+                report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                             parser->origin.src.items, parser->origin.name);
+                return false;
+            }
+
+            if (!parser_parse_expr(parser, &out->let.value)) return false;
+            out->type = AST_LET;
             break;
         }
         }
-        break;
-    }
-    case KT_LET: {
-        if (!parser_expect_ident(parser, &out->let.name)) {
-            log_diagnostic(LL_ERROR, "Expected a name for a variable definition here");
+    } else if (t.type == TT_IDENT) {
+        switch (parser_peek(parser, 0).type) {
+        case TT_ASSIGN: {
+            out->type = AST_ASSIGN;
+            out->assign.name = t.identifier;
+            parser_pop(parser);
+            if (!parser_parse_expr(parser, &out->assign.value)) return false;
+            break;
+        }
+        default: {
+            log_diagnostic(LL_ERROR, "Expected `=` after this identifier");
             report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
                          parser->origin.src.items, parser->origin.name);
             return false;
         }
-        if (!parser_expect_and_skip(parser, TT_ASSIGN)) {
-            log_diagnostic(LL_ERROR, "Expected `=` here after the name of the let binding");
-            report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
-                         parser->origin.src.items, parser->origin.name);
-            return false;
         }
-
-        if (!parser_parse_expr(parser, &out->let.value)) return false;
-        out->type = AST_LET;
-        break;
-    }
     }
 
     if (parser_is_empty(parser) || parser_peek(parser, 0).type != TT_SEMICOLON) {
