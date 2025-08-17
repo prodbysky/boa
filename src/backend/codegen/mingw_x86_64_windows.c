@@ -90,7 +90,6 @@ static bool generate_statement(FILE *sink, const SSAStatement *st) {
     return true;
 }
 
-
 static void emit_return_some(FILE *sink, const SSAStatement *ret) {
     ASSERT(ret->type == SSAST_RETURN,
            "This function should only be called when the type of the statement is SSAST_RETURN");
@@ -198,4 +197,3 @@ static void value_asm_repr(FILE *sink, const SSAValue *value) {
     }
     }
 }
-

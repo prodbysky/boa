@@ -3,6 +3,7 @@
 typedef enum {
     TK_Linux_x86_64_NASM,
     TK_Win_x86_64_MINGW,
+    TK_Count,
 } TargetKind;
 
 typedef struct {
@@ -14,7 +15,7 @@ typedef struct {
     void (*cleanup)(char *root_path);
 } Target;
 
-Target* find_target(const char* name);
+bool find_target(Target** out, const char* name);
 const char* target_enum_to_str(TargetKind kind);
 
 

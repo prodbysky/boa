@@ -33,11 +33,14 @@ static Target TARGET_WINDOWS_MINGW = {
 
 static Target *targets[] = {&TARGET_LINUX_NASM, &TARGET_WINDOWS_MINGW, NULL};
 
-Target *find_target(const char *name) {
+bool find_target(Target** out, const char* name) {
     for (size_t i = 0; targets[i] != NULL; i++) {
-        if (strcmp(targets[i]->name, name) == 0) return targets[i];
+        if (strcmp(targets[i]->name, name) == 0) {
+            *out = targets[i];
+            return true;
+        }
     }
-    return NULL;
+    return false;
 }
 
 const char *target_enum_to_str(TargetKind kind) {

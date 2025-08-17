@@ -1,6 +1,10 @@
 #include "config.h"
 #include "log.h"
+#include "target.h"
 #include "util.h"
+
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 bool parse_config(Config *conf, int argc, char **argv) {
@@ -35,8 +39,9 @@ bool parse_config(Config *conf, int argc, char **argv) {
             argc--;
             argv++;
         } else if (strcmp(*argv, "-list-targets") == 0) {
-            log_diagnostic(LL_INFO, "linux_nasm");
-            log_diagnostic(LL_INFO, "windows_mingw");
+            for (TargetKind tk = 0; tk < TK_Count; tk++) {
+                log_diagnostic(LL_INFO, "%s", target_enum_to_str(tk));
+            }
             exit(0);
         } else if (strcmp(*argv, "-target") == 0) {
             argc--;
@@ -45,17 +50,12 @@ bool parse_config(Config *conf, int argc, char **argv) {
                 log_diagnostic(LL_ERROR, "Expected a target name (run %s -list-targets)", conf->exe_name);
                 return false;
             }
-            if (strcmp(*argv, "linux_nasm") == 0) {
-                conf->target = *argv;
-                argc--;
-                argv++;
-            } else if (strcmp(*argv, "windows_mingw") == 0) {
-                conf->target = *argv;
-                argc--;
-                argv++;
-            } else {
+            Target* t;
+            if (!find_target(&t, *argv)) {
                 log_diagnostic(LL_ERROR, "Unknown target name %s (run %s -list-targets)", *argv, conf->exe_name);
                 return false;
+            } else {
+                conf->target = *argv;
             }
         } else {
             if (**argv == '-') {
@@ -95,7 +95,7 @@ void usage(char *program_name) {
     log_diagnostic(LL_INFO, "    -help           : Show this help message");
     log_diagnostic(LL_INFO, "    -o              : Customize the output file name (format: -o <name>)");
     log_diagnostic(LL_INFO, "    -keep-artifacts : Keep the build artifacts (.asm, .o files)");
-    log_diagnostic(LL_INFO, "    -no-opt         : Dont optimize the code");
+    log_diagnostic(LL_INFO, "    -no-opt         : Don't optimize the code");
     log_diagnostic(LL_INFO, "    -target <TARGET>: Select the target");
     log_diagnostic(LL_INFO, "    -list-targets   : List available targets");
 }

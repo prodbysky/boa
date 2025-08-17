@@ -33,9 +33,9 @@ int main(int argc, char **argv) {
     Target *t = NULL;
     if (c.target == NULL) {
         const char *target_name = target_enum_to_str(default_target);
-        t = find_target(target_name);
+        find_target(&t, target_name);
     } else {
-        t = find_target(c.target);
+        find_target(&t, c.target);
     }
 
     SourceFile file = {0};
