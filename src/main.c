@@ -100,18 +100,18 @@ int main(int argc, char **argv) {
     }
     fclose(asm_file);
 
-    if (run_program("nasm", (char *[]){"nasm", asm_path_c, "-f", "elf64", "-o", o_path_c, NULL}) != 0) {
+    if (run_program("nasm", 5, (char *[]){asm_path_c, "-f", "elf64", "-o", o_path_c, NULL}) != 0) {
         log_diagnostic(LL_ERROR, "nasm failed");
         result = 1;
         goto defer;
     }
-    if (run_program("ld", (char *[]){"ld", o_path_c, "-o", c.output_name, NULL}) != 0) {
-        if (!c.keep_build_artifacts) { run_program("rm", (char *[]){"rm", o_path_c, asm_path_c, NULL}); }
+    if (run_program("ld", 3, (char *[]){o_path_c, "-o", c.output_name, NULL}) != 0) {
+        if (!c.keep_build_artifacts) { run_program("rm", 2, (char *[]){o_path_c, asm_path_c, NULL}); }
         log_diagnostic(LL_ERROR, "ld failed");
         result = 1;
         goto defer;
     }
-    if (!c.keep_build_artifacts) { run_program("rm", (char *[]){"rm", o_path_c, asm_path_c, NULL}); }
+    if (!c.keep_build_artifacts) { run_program("rm", 2, (char *[]){o_path_c, asm_path_c, NULL}); }
 
 defer:
     if (tree.items != NULL) free(tree.items);
