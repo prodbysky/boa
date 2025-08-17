@@ -22,6 +22,7 @@ bool generate_ssa_module(const AstTree *ast, SSAModule *out) {
 // so far will only do dce for instructions after the return statement
 // now will try to strip not needed statements
 static bool dce(SSAModule *mod);
+
 bool get_if_known_variable(SSANameToValue *vals, StringView view, NameValuePair **out) {
     for (size_t i = 0; i < vals->count; i++) {
         if (strncmp(view.items, vals->items[i].name.items, view.count) == 0) {
