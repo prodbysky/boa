@@ -47,7 +47,7 @@ bool parse_config(Config *conf, int argc, char **argv) {
                 conf->target = *argv;
                 argc--;
                 argv++;
-            } else if (strcmp(*argv, "windows_mingw")) {
+            } else if (strcmp(*argv, "windows_mingw") == 0) {
                 conf->target = *argv;
                 argc--;
                 argv++;

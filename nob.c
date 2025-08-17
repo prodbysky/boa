@@ -7,7 +7,7 @@
 
 #define BUILD_DIR "build"
 #define TEST_DIR "tests"
-#define SOURCES "src/log.c", "src/frontend/lexer.c", "src/arena.c", "src/frontend/parser.c", "src/backend/ir/ssa.c", "src/backend/codegen/nasm_x86_64_linux.c", "src/util.c", "src/config.c", "src/target.c"
+#define SOURCES "src/log.c", "src/frontend/lexer.c", "src/arena.c", "src/frontend/parser.c", "src/backend/ir/ssa.c", "src/backend/codegen/nasm_x86_64_linux.c", "src/util.c", "src/config.c", "src/target.c", "src/backend/codegen/mingw_x86_64_windows.c"
 
 // #ifdef _WIN32
 //     @sa.pohod ty <3
