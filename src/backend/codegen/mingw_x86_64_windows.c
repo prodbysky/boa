@@ -33,7 +33,7 @@ bool mingw_x86_64_windows_generate_file(FILE *sink, const SSAModule *mod) {
     fprintf(sink, "_start:\n");
     fprintf(sink, "   call main\n");
     fprintf(sink, "   mov rcx, rax\n");
-    fprintf(sink, "   sub rsp, 8\n");
+    fprintf(sink, "   sub rsp, 40\n");
     fprintf(sink, "   call ExitProcess\n");
 
     generate_function(sink, &mod->functions.items[0]);

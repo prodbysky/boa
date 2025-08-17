@@ -16,7 +16,7 @@
 
 #ifdef __unix__
 const TargetKind default_target = TK_Linux_x86_64_NASM;
-#elifdef _WIN32
+#elif defined(_WIN32)
 const TargetKind default_target = TK_Win_x86_64_MINGW;
 #endif
 
@@ -31,11 +31,13 @@ int main(int argc, char **argv) {
     }
 
     Target *t = NULL;
+    const char *target_name = (c.target == NULL) ? target_enum_to_str(default_target) : c.target;
     if (c.target == NULL) {
-        const char *target_name = target_enum_to_str(default_target);
-        find_target(&t, target_name);
-    } else {
-        find_target(&t, c.target);
+        if (!find_target(&t, target_name)) {
+            log_diagnostic(LL_ERROR, "Unknown target %s", c.target ? c.target : "(default)");
+            result = 1;
+            goto defer;
+        }
     }
 
     SourceFile file = {0};

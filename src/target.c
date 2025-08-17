@@ -2,6 +2,7 @@
 #include "backend/codegen/mingw_x86_64_windows.h"
 #include "backend/codegen/nasm_x86_64_linux.h"
 #include "util.h"
+#include <stdio.h>
 
 static bool linux_nasm_gen(char *root_path, const SSAModule *mod);
 static bool linux_nasm_assemble(char *root_path);
@@ -99,13 +100,12 @@ static bool windows_mingw_link(char *root_path) {
     free(p_final.path.items);
 
     // holy chunk
-    if (run_program("x86_64-w64-mingw32-gcc", 8,
+    if (run_program("x86_64-w64-mingw32-gcc", 7,
                     (char *[]){
                         p_o_c,
                         "-o",
                         p_final_c,
-                        "-e",
-                        "_start",
+                        "-Wl,-e,_start",
                         "-nostdlib",
                         "-Wl,--subsystem=console",
                         "-lkernel32",
@@ -203,7 +203,8 @@ static void linux_nasm_cleanup(char *root_path) {
     char *p_o_c = path_to_cstr(&p_o);
     free(p_o.path.items);
 
-    run_program("rm", 2, (char *[]){p_o_c, p_asm_c, NULL});
+    remove(p_o_c);
+    remove(p_asm_c);
     free(p_o_c);
     free(p_asm_c);
 }
