@@ -32,6 +32,8 @@ bool parse_config(Config *conf, int argc, char **argv) {
             exit(0);
         } else if (strcmp(*argv, "-no-opt") == 0) {
             conf->dont_optimize = true;
+            argc--;
+            argv++;
         } else if (strcmp(*argv, "-list-targets") == 0) {
             log_diagnostic(LL_INFO, "linux_nasm");
             log_diagnostic(LL_INFO, "windows_mingw");
