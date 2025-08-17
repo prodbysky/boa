@@ -3,14 +3,16 @@
 #define NOB_STRIP_PREFIX
 #include "nob.h"
 
+// TODO: Make this work on windows ewww
+
 #define BUILD_DIR "build"
 #define TEST_DIR "tests"
-#define SOURCES "src/log.c", "src/frontend/lexer.c", "src/arena.c", "src/frontend/parser.c", "src/backend/ir/ssa.c", "src/backend/codegen/nasm_x86_64_linux.c", "src/util.c"
+#define SOURCES "src/log.c", "src/frontend/lexer.c", "src/arena.c", "src/frontend/parser.c", "src/backend/ir/ssa.c", "src/backend/codegen/nasm_x86_64_linux.c", "src/util.c", "src/config.c"
 
-#ifdef _WIN32
-    // @sa.pohod ty <3
-    #error "Your Windows version is too old for this software.\nGet up to date at https://kernel.org !";
-#endif
+// #ifdef _WIN32
+//     @sa.pohod ty <3
+//     #error "Your Windows version is too old for this software.\nGet up to date at https://kernel.org !";
+// #endif
 
 void common_flags(Cmd *cmd);
 

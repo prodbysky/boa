@@ -59,6 +59,6 @@ char *path_to_cstr(Path *path);
 bool read_file(const char *file_name, String *s);
 bool read_source_file(const char *file_name, SourceFile *out);
 
-int run_program(const char *prog, char *args[]);
+int run_program(const char *prog, int argc, char *argv[]);
 
 #endif

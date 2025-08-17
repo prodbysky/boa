@@ -8,26 +8,25 @@
 
 #include "backend/codegen/nasm_x86_64_linux.h"
 #include "backend/ir/ssa.h"
+#include "config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-static void usage(char *program_name);
+typedef enum {
+    TK_Linux_x86_64_NASM,
+} TargetKind;
 
-typedef struct {
-    char *exe_name;
-    char *input_name;
-    char *output_name;
-    bool should_free_output_name;
-    bool keep_build_artifacts;
-    bool dont_optimize;
-} Config;
-
-bool parse_config(Config *conf, int argc, char **argv);
+#ifdef __unix__
+const TargetKind default_target = TK_Linux_x86_64_NASM;
+#elifdef _WIN32
+#error No default target exists for windows
+#endif
 
 int main(int argc, char **argv) {
     int result = 0;
     Config c = {0};
+
 
     char *asm_path_c = NULL;
     char *o_path_c = NULL;
@@ -113,6 +112,7 @@ int main(int argc, char **argv) {
         goto defer;
     }
     if (!c.keep_build_artifacts) { run_program("rm", (char *[]){"rm", o_path_c, asm_path_c, NULL}); }
+
 defer:
     if (tree.items != NULL) free(tree.items);
     if (mod.functions.items != NULL) {
@@ -131,72 +131,5 @@ defer:
     return result;
 }
 
-bool parse_config(Config *conf, int argc, char **argv) {
-    conf->exe_name = *argv;
-    argc--;
-    argv++;
 
-    while (argc > 0) {
-        if (strcmp(*argv, "-o") == 0) {
-            if (conf->output_name != NULL) {
-                log_diagnostic(LL_ERROR, "Found a duplicate output file name flag");
-                return false;
-            }
-            argc--;
-            argv++;
-            if (argc >= 0) {
-                log_diagnostic(LL_ERROR, "Expected a file name to be here to set a custom output file");
-                return false;
-            }
-            conf->output_name = *argv;
-            argc--;
-            argv++;
-        } else if (strcmp(*argv, "-keep-artifacts") == 0) {
-            conf->keep_build_artifacts = true;
-            argc--;
-            argv++;
-        } else if (strcmp(*argv, "-help") == 0) {
-            usage(conf->exe_name);
-            exit(0);
-        } else if (strcmp(*argv, "-no-opt") == 0) {
-            conf->dont_optimize = true;
-        } else {
-            if (**argv == '-') {
-                log_diagnostic(LL_ERROR, "Unknown flag supplied");
-                return false;
-            }
-            if (conf->input_name != NULL) {
-                log_diagnostic(LL_ERROR, "Compiling multiple files at the same time is not supported");
-                return false;
-            }
-            conf->input_name = *argv;
-            argc--;
-            argv++;
-        }
-    }
 
-    if (conf->input_name == NULL) {
-        log_diagnostic(LL_ERROR, "No input name is provided");
-        return false;
-    }
-
-    if (conf->output_name == NULL) {
-        size_t len = strlen(conf->input_name) - 3;
-        conf->output_name = malloc(sizeof(char) * (len + 1));
-        conf->output_name[len] = 0;
-        conf->should_free_output_name = true;
-        snprintf(conf->output_name, len, "%s", conf->input_name);
-    }
-
-    return true;
-}
-
-static void usage(char *program_name) {
-    log_diagnostic(LL_INFO, "Usage: ");
-    log_diagnostic(LL_INFO, "  %s <input.boa> [FLAGS]", program_name);
-    log_diagnostic(LL_INFO, "  [FLAGS]:");
-    log_diagnostic(LL_INFO, "    -help          : Show this help message");
-    log_diagnostic(LL_INFO, "    -o             : Customize the output file name (format: -o <name>)");
-    log_diagnostic(LL_INFO, "    -keep-artifacts: Keep the build artifacts (.asm, .o files)");
-    log_diagnostic(LL_INFO, "    -no-opt        : Dont optimize the code");
-}
