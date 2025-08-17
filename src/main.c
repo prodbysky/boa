@@ -6,7 +6,6 @@
 #include "frontend/lexer.h"
 #include "frontend/parser.h"
 
-#include "backend/codegen/nasm_x86_64_linux.h"
 #include "backend/ir/ssa.h"
 #include "config.h"
 #include "target.h"
@@ -52,7 +51,7 @@ int main(int argc, char **argv) {
         goto defer;
     }
 
-    Arena arena = arena_new(1024);
+    Arena arena = arena_new(1024 * 1024);
 
     Parser p = {
         .arena = &arena,
@@ -75,6 +74,7 @@ int main(int argc, char **argv) {
         result = 1;
         goto defer;
     }
+
     if (!c.dont_optimize) {
         if (!optimize_ssa_ir(&mod)) {
             result = 1;
