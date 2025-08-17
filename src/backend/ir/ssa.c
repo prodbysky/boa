@@ -2,6 +2,7 @@
 #include "../../util.h"
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 // TODO: MULTIPLE FUNCTIONS
 bool generate_ssa_module(const AstTree *ast, SSAModule *out) {
@@ -21,6 +22,17 @@ bool generate_ssa_module(const AstTree *ast, SSAModule *out) {
 // so far will only do dce for instructions after the return statement
 // now will try to strip not needed statements
 static bool dce(SSAModule *mod);
+bool get_if_known_variable(SSANameToValue *vals, StringView view, NameValuePair **out) {
+    for (size_t i = 0; i < vals->count; i++) {
+        if (strncmp(view.items, vals->items[i].name.items, view.count) == 0) {
+            *out = &vals->items[i];
+            return true;
+        }
+    }
+
+    return false;
+}
+
 
 // does this:
 //     where a + b and if a or b is 0 then changes the statement to be just setting to a or b
@@ -238,7 +250,6 @@ static bool dce(SSAModule *mod) {
 
     return changed;
 }
-
 static bool algebraic_simp(SSAModule *mod) {
     bool changed = false;
     for (size_t i = 0; i < mod->functions.count; i++) {
@@ -332,8 +343,26 @@ bool generate_ssa_statement(const AstTree *tree, const AstStatement *st, SSAFunc
         da_push(&out->body, st);
         da_push(&out->variables, pair);
         return true;
-    } break;
-    case AST_ASSIGN: TODO(); break;
+    }
+    case AST_ASSIGN: {
+        SSAValue variable_value_new = {0};
+        if (!generate_ssa_expr(tree, &st->assign.value, &variable_value_new, out)) return false;
+        NameValuePair* p;
+        if (!get_if_known_variable(&out->variables, st->assign.name, &p)) {
+            log_diagnostic(LL_ERROR, "Tried to reassign an unknown variable");
+            report_error(st->begin, st->begin + st->len, tree->source.src.items, tree->source.name);
+            return false;
+        }
+        TempValueIndex place = out->max_temps++;
+
+        SSAStatement st = {
+            .type = SSAST_ASSIGN,
+            .assign = {.place = place, .value = variable_value_new},
+        };
+        p->index = place;
+        da_push(&out->body, st);
+        return true;
+    }
     }
     UNREACHABLE("This shouldn't ever be reached, so all statements should early return from their case in "
                 "the switch "

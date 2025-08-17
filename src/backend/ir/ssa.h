@@ -67,6 +67,8 @@ typedef struct {
     size_t capacity;
 } SSANameToValue;
 
+bool get_if_known_variable(SSANameToValue *vals, StringView view, NameValuePair **out);
+
 typedef struct {
     const char* name;
     SSAFunctionBody body;
