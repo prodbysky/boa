@@ -9,27 +9,20 @@
 #include "backend/codegen/nasm_x86_64_linux.h"
 #include "backend/ir/ssa.h"
 #include "config.h"
+#include "target.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-typedef enum {
-    TK_Linux_x86_64_NASM,
-} TargetKind;
-
 #ifdef __unix__
 const TargetKind default_target = TK_Linux_x86_64_NASM;
 #elifdef _WIN32
-#error No default target exists for windows
+const TargetKind default_target = TK_Win_x86_64_MINGW;
 #endif
 
 int main(int argc, char **argv) {
     int result = 0;
     Config c = {0};
-
-
-    char *asm_path_c = NULL;
-    char *o_path_c = NULL;
 
     if (!parse_config(&c, argc, argv)) {
         usage(c.exe_name);
@@ -37,17 +30,13 @@ int main(int argc, char **argv) {
         goto defer;
     }
 
-    Path asm_path = path_from_cstr(c.output_name);
-    path_add_ext(&asm_path, "asm");
-
-    Path o_path = path_from_cstr(c.output_name);
-    path_add_ext(&o_path, "o");
-
-    asm_path_c = path_to_cstr(&asm_path);
-    o_path_c = path_to_cstr(&o_path);
-
-    free(asm_path.path.items);
-    free(o_path.path.items);
+    Target *t = NULL;
+    if (c.target == NULL) {
+        const char *target_name = target_enum_to_str(default_target);
+        t = find_target(target_name);
+    } else {
+        t = find_target(c.target);
+    }
 
     SourceFile file = {0};
     if (!read_source_file(c.input_name, &file)) {
@@ -93,25 +82,10 @@ int main(int argc, char **argv) {
         }
     }
 
-    FILE *asm_file = fopen(asm_path_c, "wb");
-    if (!nasm_x86_64_linux_generate_file(asm_file, &mod)) {
-        result = 1;
-        goto defer;
-    }
-    fclose(asm_file);
-
-    if (run_program("nasm", 5, (char *[]){asm_path_c, "-f", "elf64", "-o", o_path_c, NULL}) != 0) {
-        log_diagnostic(LL_ERROR, "nasm failed");
-        result = 1;
-        goto defer;
-    }
-    if (run_program("ld", 3, (char *[]){o_path_c, "-o", c.output_name, NULL}) != 0) {
-        if (!c.keep_build_artifacts) { run_program("rm", 2, (char *[]){o_path_c, asm_path_c, NULL}); }
-        log_diagnostic(LL_ERROR, "ld failed");
-        result = 1;
-        goto defer;
-    }
-    if (!c.keep_build_artifacts) { run_program("rm", 2, (char *[]){o_path_c, asm_path_c, NULL}); }
+    t->generate(c.output_name, &mod);
+    t->assemble(c.output_name);
+    t->link(c.output_name);
+    if (!c.keep_build_artifacts) t->cleanup(c.output_name);
 
 defer:
     if (tree.items != NULL) free(tree.items);
@@ -125,11 +99,6 @@ defer:
     arena_free(&arena);
     if (tokens.items != NULL) free(tokens.items);
     if (file.src.items != NULL) free(file.src.items);
-    free(asm_path_c);
-    free(o_path_c);
     if (c.should_free_output_name) free(c.output_name);
     return result;
 }
-
-
-
