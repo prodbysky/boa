@@ -32,12 +32,10 @@ int main(int argc, char **argv) {
 
     Target *t = NULL;
     const char *target_name = (c.target == NULL) ? target_enum_to_str(default_target) : c.target;
-    if (c.target == NULL) {
-        if (!find_target(&t, target_name)) {
-            log_diagnostic(LL_ERROR, "Unknown target %s", c.target ? c.target : "(default)");
-            result = 1;
-            goto defer;
-        }
+    if (!find_target(&t, target_name)) {
+        log_diagnostic(LL_ERROR, "Unknown target %s", c.target ? c.target : "(default)");
+        result = 1;
+        goto defer;
     }
 
     SourceFile file = {0};

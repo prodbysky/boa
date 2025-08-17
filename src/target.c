@@ -95,7 +95,7 @@ static bool windows_mingw_link(char *root_path) {
     free(p_o.path.items);
 
     Path p_final = path_from_cstr(root_path);
-    path_add_ext(&p_o, "exe");
+    path_add_ext(&p_final, "exe");
     char *p_final_c = path_to_cstr(&p_final);
     free(p_final.path.items);
 
@@ -111,12 +111,13 @@ static bool windows_mingw_link(char *root_path) {
                         "-lkernel32",
                         NULL,
                     }) != 0) {
-        log_diagnostic(LL_ERROR, "ld failed");
+        log_diagnostic(LL_ERROR, "linking failed failed");
         free(p_o_c);
         free(p_final_c);
         return false;
     }
 
+    free(p_o_c);
     free(p_final_c);
     return true;
 }
@@ -132,7 +133,8 @@ static void windows_mingw_cleanup(char *root_path) {
     char *p_obj_c = path_to_cstr(&p_obj);
     free(p_obj.path.items);
 
-    run_program("del", 2, (char *[]){p_obj_c, p_s_c, NULL});
+    remove(p_obj_c);
+    remove(p_s_c);
     free(p_obj_c);
     free(p_s_c);
 }

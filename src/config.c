@@ -56,6 +56,8 @@ bool parse_config(Config *conf, int argc, char **argv) {
                 return false;
             } else {
                 conf->target = *argv;
+                argc--;
+                argv++;
             }
         } else {
             if (**argv == '-') {
