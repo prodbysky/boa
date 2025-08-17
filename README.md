@@ -8,9 +8,12 @@ Yeah so I'm making another language :DD
 ```bash
  $ gcc nob.c -o nob
  $ ./nob
- $ ./build/boa
+ $ ./build/boa -help
 ```
 
+## Supported targets
+ - Windows (via mingw)
+ - Linux (via nasm)
 
 ## Code guidelines (be 'more formal')
  - Be as assertive as possible (via the `ASSERT` and `UNREACHABLE` macros in src/util.h)
