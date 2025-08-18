@@ -112,7 +112,19 @@ bool parser_parse_primary(Parser *parser, AstExpression *out) {
         return true;
     }
     case TT_IDENT: {
-        // TODO: Function call parsing as a primary expression
+        if (!parser_is_empty(parser) && parser_peek(parser, 0).type == TT_OPEN_PAREN) {
+            out->type = AET_FUNCTION_CALL;
+            parser_pop(parser);
+            Token closing_paren = parser_peek(parser, 0);
+            if (!parser_expect_and_skip(parser, TT_CLOSE_PAREN)) {
+                log_message(LL_ERROR, "Function call with arguments are not supported yet");
+                TODO();
+            }
+            out->len = closing_paren.begin + 1 - t.begin;
+            out->func_call.name = t.identifier;
+            out->begin = t.begin;
+            return true;
+        }
         out->type = AET_IDENT;
         out->len = t.identifier.count;
         out->ident = t.identifier;
@@ -234,7 +246,10 @@ bool parser_parse_statement(Parser *parser, AstStatement *out) {
             out->type = AST_LET;
             break;
         }
-        case KT_DEF: TODO(); break;
+        case KT_DEF:
+            log_message(LL_INFO, "Nested functions aren't supported");
+            TODO();
+            break;
         }
     } else if (t.type == TT_IDENT) {
         switch (parser_peek(parser, 0).type) {
@@ -243,6 +258,18 @@ bool parser_parse_statement(Parser *parser, AstStatement *out) {
             out->assign.name = t.identifier;
             parser_pop(parser);
             if (!parser_parse_expr(parser, &out->assign.value)) return false;
+            break;
+        }
+        case TT_OPEN_PAREN: {
+            out->type = AST_CALL;
+            out->call.name = t.identifier;
+            parser_pop(parser);
+            if (!parser_expect_and_skip(parser, TT_CLOSE_PAREN)) {
+                log_diagnostic(LL_ERROR, "Expected `)` to close the function call parenthesis");
+                report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                             parser->origin.src.items, parser->origin.name);
+                return false;
+            }
             break;
         }
         default: {

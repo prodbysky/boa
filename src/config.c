@@ -34,14 +34,8 @@ bool parse_config(Config *conf, int argc, char **argv) {
         } else if (strcmp(*argv, "-help") == 0) {
             usage(conf->exe_name);
             exit(0);
-        } else if (strcmp(*argv, "-no-opt") == 0) {
-            conf->dont_optimize = true;
-            argc--;
-            argv++;
         } else if (strcmp(*argv, "-list-targets") == 0) {
-            for (TargetKind tk = 0; tk < TK_Count; tk++) {
-                log_diagnostic(LL_INFO, "%s", target_enum_to_str(tk));
-            }
+            for (TargetKind tk = 0; tk < TK_Count; tk++) { log_diagnostic(LL_INFO, "%s", target_enum_to_str(tk)); }
             exit(0);
         } else if (strcmp(*argv, "-target") == 0) {
             argc--;
@@ -50,7 +44,7 @@ bool parse_config(Config *conf, int argc, char **argv) {
                 log_diagnostic(LL_ERROR, "Expected a target name (run %s -list-targets)", conf->exe_name);
                 return false;
             }
-            Target* t;
+            Target *t;
             if (!find_target(&t, *argv)) {
                 log_diagnostic(LL_ERROR, "Unknown target name %s (run %s -list-targets)", *argv, conf->exe_name);
                 return false;

@@ -13,6 +13,7 @@ static void emit_sub(FILE *sink, const SSAStatement *st);
 static void emit_imul(FILE *sink, const SSAStatement *st);
 static void emit_div(FILE *sink, const SSAStatement *st);
 static void emit_assign(FILE *sink, const SSAStatement *st);
+static void emit_call(FILE *sink, const SSAStatement *st);
 
 static void emit_add_reg_value(FILE *sink, const char *reg, const SSAValue *value);
 static void emit_sub_reg_value(FILE *sink, const char *reg, const SSAValue *value);
@@ -35,15 +36,14 @@ bool nasm_x86_64_linux_generate_file(FILE *sink, const SSAModule *mod) {
     fprintf(sink, "  mov rdi, rsi\n");
     fprintf(sink, "  syscall\n");
 
-    for (size_t i = 0; i < mod->functions.count; i++) {
-        generate_function(sink, &mod->functions.items[i]);
-    }
+    for (size_t i = 0; i < mod->functions.count; i++) { generate_function(sink, &mod->functions.items[i]); }
 
     return true;
 }
 
 static bool generate_function(FILE *sink, const SSAFunction *func) {
-    fprintf(sink, STR_FMT":\n", STR_ARG(func->name)); fprintf(sink, "  enter %ld, 0\n", func->max_temps * 8);
+    fprintf(sink, STR_FMT ":\n", STR_ARG(func->name));
+    fprintf(sink, "  enter %ld, 0\n", func->max_temps * 8);
 
     for (size_t i = 0; i < func->body.count; i++) { generate_statement(sink, &func->body.items[i]); }
 
@@ -83,6 +83,10 @@ static bool generate_statement(FILE *sink, const SSAStatement *st) {
     }
     case SSAST_ASSIGN: {
         emit_assign(sink, st);
+        return true;
+    }
+    case SSAST_CALL: {
+        emit_call(sink, st);
         return true;
     }
     default: TODO();
@@ -150,11 +154,19 @@ static void emit_assign(FILE *sink, const SSAStatement *st) {
     move_value_into_value(sink, &st->assign.value, &temp_value);
 }
 
+static void emit_call(FILE *sink, const SSAStatement *st) {
+    ASSERT(st->type == SSAST_CALL, "This function should only be called when the type of the statement is SSAST_CALL");
+    fprintf(sink, "  call "STR_FMT"\n", STR_ARG(st->call.name));
+    if (st->call.returns) {
+        fprintf(sink, "  mov ");
+        value_asm_repr(sink, &st->call.return_v);
+        fprintf(sink, ", rax\n");
+    }
+}
+
 static void move_value_into_value(FILE *sink, const SSAValue *from, const SSAValue *into) {
-    // Load source into a register
     move_value_into_register(sink, "rax", from);
 
-    // Store register into destination
     fprintf(sink, "  mov ");
     value_asm_repr(sink, into);
     fprintf(sink, ", rax\n");

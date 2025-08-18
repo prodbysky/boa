@@ -13,7 +13,7 @@ typedef struct {
     Arena *arena;
 } Parser;
 
-typedef enum { AET_PRIMARY, AET_BINARY, AET_IDENT, } AstExpressionType;
+typedef enum { AET_PRIMARY, AET_BINARY, AET_IDENT, AET_FUNCTION_CALL } AstExpressionType;
 
 typedef struct AstExpression {
     AstExpressionType type;
@@ -27,10 +27,13 @@ typedef struct AstExpression {
             OperatorType op;
             struct AstExpression *r;
         } bin;
+        struct {
+            StringView name;
+        } func_call;
     };
 } AstExpression;
 
-typedef enum { AST_RETURN, AST_LET, AST_ASSIGN } AstStatementType;
+typedef enum { AST_RETURN, AST_LET, AST_ASSIGN, AST_CALL} AstStatementType;
 
 typedef struct {
     AstStatementType type;
@@ -45,6 +48,9 @@ typedef struct {
             StringView name;
             AstExpression value;
         } let, assign;
+        struct {
+            StringView name;
+        } call;
     };
 } AstStatement;
 
@@ -55,9 +61,8 @@ typedef struct {
     size_t capacity;
 } AstTree;
 
-
 typedef struct {
-    AstStatement* items;
+    AstStatement *items;
     size_t count;
     size_t capacity;
 } AstFunctionBody;
@@ -68,7 +73,7 @@ typedef struct {
 } AstFunction;
 
 typedef struct {
-    AstFunction* items;
+    AstFunction *items;
     size_t count;
     size_t capacity;
 } AstFunctions;
@@ -78,15 +83,14 @@ typedef struct {
     SourceFileView source;
 } AstRoot;
 
-
 bool parser_parse(Parser *parser, AstRoot *out);
 
 bool parser_is_empty(const Parser *parser);
 Token parser_pop(Parser *parser);
 Token parser_peek(const Parser *parser, size_t offset);
 
-bool parser_expect_ident(Parser* parser, StringView* out);
-bool parser_expect_and_skip(Parser* parser, TokenType type);
+bool parser_expect_ident(Parser *parser, StringView *out);
+bool parser_expect_and_skip(Parser *parser, TokenType type);
 
 /*
     https://timothya.com/pdfs/crafting-interpreters.pdf

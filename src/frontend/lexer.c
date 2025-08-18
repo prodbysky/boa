@@ -139,12 +139,8 @@ bool lexer_lex_ident_or_keyword(Lexer *lexer, Token *out) {
     return true;
 }
 
-// TODO: Make this "better"
 bool lexer_ident_is_keyword(const char *begin, ptrdiff_t len) {
-    if (strncmp(begin, "return", len) == 0) return true;
-    if (strncmp(begin, "let", len) == 0) return true;
-    if (strncmp(begin, "def", len) == 0) return true;
-    return false;
+    return lexer_keyword(begin, len) != KT_NO;
 }
 
 KeywordType lexer_keyword(const char *begin, ptrdiff_t len) {

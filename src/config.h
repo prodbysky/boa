@@ -8,7 +8,6 @@ typedef struct {
     char *target;
     bool should_free_output_name;
     bool keep_build_artifacts;
-    bool dont_optimize;
 } Config;
 
 bool parse_config(Config *conf, int argc, char **argv);

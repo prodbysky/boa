@@ -30,6 +30,7 @@ typedef enum {
     SSAST_MUL,
     SSAST_DIV,
     SSAST_ASSIGN,
+    SSAST_CALL,
 } SSAStatementType;
 
 typedef struct {
@@ -47,6 +48,11 @@ typedef struct {
             TempValueIndex place;
             SSAValue value;
         } assign;
+        struct {
+            StringView name;
+            bool returns;
+            SSAValue return_v;
+        } call;
     };
 } SSAStatement;
 
@@ -89,7 +95,5 @@ typedef struct {
 bool generate_ssa_module(const AstRoot* ast, SSAModule* out);
 bool generate_ssa_statement(const AstRoot* ast, const AstStatement* st, SSAFunction* out);
 bool generate_ssa_expr(const AstRoot* ast, const AstExpression* expr, SSAValue* out_value, SSAFunction* out);
-
-bool optimize_ssa_ir(SSAModule* mod);
 
 #endif
