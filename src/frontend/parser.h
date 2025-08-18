@@ -55,7 +55,31 @@ typedef struct {
     size_t capacity;
 } AstTree;
 
-bool parser_parse(Parser *parser, AstTree *out);
+
+typedef struct {
+    AstStatement* items;
+    size_t count;
+    size_t capacity;
+} AstFunctionBody;
+
+typedef struct {
+    StringView name;
+    AstFunctionBody body;
+} AstFunction;
+
+typedef struct {
+    AstFunction* items;
+    size_t count;
+    size_t capacity;
+} AstFunctions;
+
+typedef struct {
+    AstFunctions fs;
+    SourceFileView source;
+} AstRoot;
+
+
+bool parser_parse(Parser *parser, AstRoot *out);
 
 bool parser_is_empty(const Parser *parser);
 Token parser_pop(Parser *parser);

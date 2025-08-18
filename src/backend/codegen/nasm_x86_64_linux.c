@@ -22,9 +22,9 @@ static void move_value_into_value(FILE *sink, const SSAValue *from, const SSAVal
 
 static void value_asm_repr(FILE *sink, const SSAValue *value);
 
+static size_t f_count = 0;
+
 bool nasm_x86_64_linux_generate_file(FILE *sink, const SSAModule *mod) {
-    ASSERT(mod->functions.count == 1, "expect only one function for now");
-    ASSERT(strcmp(mod->functions.items[0].name, "main") == 0, "expect only a main function");
     // prelude of some sorts
     fprintf(sink, "section .text\n");
     fprintf(sink, "global _start\n");
@@ -35,20 +35,22 @@ bool nasm_x86_64_linux_generate_file(FILE *sink, const SSAModule *mod) {
     fprintf(sink, "  mov rdi, rsi\n");
     fprintf(sink, "  syscall\n");
 
-    generate_function(sink, &mod->functions.items[0]);
+    for (size_t i = 0; i < mod->functions.count; i++) {
+        generate_function(sink, &mod->functions.items[i]);
+    }
 
     return true;
 }
 
 static bool generate_function(FILE *sink, const SSAFunction *func) {
-    fprintf(sink, "%s:\n", func->name);
-    fprintf(sink, "  enter %ld, 0\n", func->max_temps * 8);
+    fprintf(sink, STR_FMT":\n", STR_ARG(func->name)); fprintf(sink, "  enter %ld, 0\n", func->max_temps * 8);
 
     for (size_t i = 0; i < func->body.count; i++) { generate_statement(sink, &func->body.items[i]); }
 
-    fprintf(sink, "ret:\n");
+    fprintf(sink, "ret%ld:\n", f_count);
     fprintf(sink, "  leave\n");
     fprintf(sink, "  ret\n");
+    f_count++;
 
     return true;
 }
@@ -91,13 +93,13 @@ static void emit_return_some(FILE *sink, const SSAStatement *ret) {
     ASSERT(ret->type == SSAST_RETURN,
            "This function should only be called when the type of the statement is SSAST_RETURN");
     move_value_into_register(sink, "rax", &ret->ret.value);
-    fprintf(sink, "  jmp ret\n");
+    fprintf(sink, "  jmp ret%ld\n", f_count);
 }
 
 static void emit_return_none(FILE *sink, const SSAStatement *ret_none) {
     ASSERT(ret_none->type == SSAST_RETURN_EMPTY,
            "This function should only be called when the type of the statement is SSAST_RETURN_EMPTY");
-    fprintf(sink, "  jmp ret\n");
+    fprintf(sink, "  jmp ret%ld\n", f_count);
 }
 
 static void emit_add(FILE *sink, const SSAStatement *st) {

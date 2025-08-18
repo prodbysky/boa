@@ -70,7 +70,7 @@ typedef struct {
 bool get_if_known_variable(SSANameToValue *vals, StringView view, NameValuePair **out);
 
 typedef struct {
-    const char* name;
+    StringView name;
     SSAFunctionBody body;
     size_t max_temps;
     SSANameToValue variables;
@@ -86,9 +86,9 @@ typedef struct {
     SSAFunctions functions;
 } SSAModule;
 
-bool generate_ssa_module(const AstTree* ast, SSAModule* out);
-bool generate_ssa_statement(const AstTree* tree, const AstStatement* st, SSAFunction* out);
-bool generate_ssa_expr(const AstTree* tree, const AstExpression* expr, SSAValue* out_value, SSAFunction* out);
+bool generate_ssa_module(const AstRoot* ast, SSAModule* out);
+bool generate_ssa_statement(const AstRoot* ast, const AstStatement* st, SSAFunction* out);
+bool generate_ssa_expr(const AstRoot* ast, const AstExpression* expr, SSAValue* out_value, SSAFunction* out);
 
 bool optimize_ssa_ir(SSAModule* mod);
 

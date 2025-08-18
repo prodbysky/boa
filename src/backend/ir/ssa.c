@@ -5,16 +5,18 @@
 #include <string.h>
 
 // TODO: MULTIPLE FUNCTIONS
-bool generate_ssa_module(const AstTree *ast, SSAModule *out) {
+bool generate_ssa_module(const AstRoot *ast, SSAModule *out) {
     ASSERT(ast, "Sanity check");
     ASSERT(out, "Sanity check");
-    SSAFunction main_func = {0};
-    main_func.name = "main";
-
-    for (size_t i = 0; i < ast->count; i++) {
-        if (!generate_ssa_statement(ast, &ast->items[i], &main_func)) return false;
+    for (size_t i = 0; i < ast->fs.count; i++) {
+        AstFunction *f = &ast->fs.items[i];
+        SSAFunction func = {0};
+        func.name = ast->fs.items[i].name;
+        for (size_t i = 0; i < f->body.count; i++) {
+            if (!generate_ssa_statement(ast, &f->body.items[i], &func)) return false;
+        }
+        da_push(&out->functions, func);
     }
-    da_push(&out->functions, main_func);
 
     return true;
 }
@@ -33,7 +35,6 @@ bool get_if_known_variable(SSANameToValue *vals, StringView view, NameValuePair 
 
     return false;
 }
-
 
 // does this:
 //     where a + b and if a or b is 0 then changes the statement to be just setting to a or b
@@ -317,7 +318,7 @@ static bool algebraic_simp(SSAModule *mod) {
     return changed;
 }
 
-bool generate_ssa_statement(const AstTree *tree, const AstStatement *st, SSAFunction *out) {
+bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunction *out) {
     ASSERT(st, "Sanity check");
     switch (st->type) {
     case AST_RETURN: {
@@ -348,7 +349,7 @@ bool generate_ssa_statement(const AstTree *tree, const AstStatement *st, SSAFunc
     case AST_ASSIGN: {
         SSAValue variable_value_new = {0};
         if (!generate_ssa_expr(tree, &st->assign.value, &variable_value_new, out)) return false;
-        NameValuePair* p;
+        NameValuePair *p;
         if (!get_if_known_variable(&out->variables, st->assign.name, &p)) {
             log_diagnostic(LL_ERROR, "Tried to reassign an unknown variable");
             report_error(st->begin, st->begin + st->len, tree->source.src.items, tree->source.name);
@@ -370,7 +371,7 @@ bool generate_ssa_statement(const AstTree *tree, const AstStatement *st, SSAFunc
                 "statement");
     return false;
 }
-bool generate_ssa_expr(const AstTree *tree, const AstExpression *expr, SSAValue *out_value, SSAFunction *out) {
+bool generate_ssa_expr(const AstRoot *tree, const AstExpression *expr, SSAValue *out_value, SSAFunction *out) {
     ASSERT(expr, "Sanity check");
     ASSERT(out_value, "Sanity check");
 

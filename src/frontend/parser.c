@@ -3,16 +3,56 @@
 #include "../util.h"
 #include "lexer.h"
 
-bool parser_parse(Parser *parser, AstTree *out) {
+bool parser_parse(Parser *parser, AstRoot *out) {
     ASSERT(parser, "Uh oh");
     ASSERT(out, "Uh oh");
 
     out->source = parser->origin;
 
     while (!parser_is_empty(parser)) {
-        AstStatement st = {0};
-        if (!parser_parse_statement(parser, &st)) return false;
-        da_push(out, st);
+        Token t = parser_pop(parser);
+        if (t.type == TT_KEYWORD && t.keyword == KT_DEF) {
+            StringView name = {0};
+            if (!parser_expect_ident(parser, &name)) {
+                log_diagnostic(LL_ERROR, "Expected a name for a function to be here");
+                report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                             parser->origin.src.items, parser->origin.name);
+                return false;
+            }
+            if (!parser_expect_and_skip(parser, TT_OPEN_PAREN)) {
+                log_diagnostic(LL_ERROR, "Expected an `(` symbol here to denote an argument list");
+                report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                             parser->origin.src.items, parser->origin.name);
+                return false;
+            }
+            if (!parser_expect_and_skip(parser, TT_CLOSE_PAREN)) {
+                log_diagnostic(LL_ERROR, "Boa does not yet support function arguments");
+                report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                             parser->origin.src.items, parser->origin.name);
+                return false;
+            }
+            if (!parser_expect_and_skip(parser, TT_OPEN_CURLY)) {
+                log_diagnostic(LL_ERROR, "Expected a `{` to begin a function body");
+                report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                             parser->origin.src.items, parser->origin.name);
+                return false;
+            }
+            AstFunction f = {0};
+            f.name = name;
+            while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_CLOSE_CURLY) {
+                AstStatement st = {0};
+                if (!parser_parse_statement(parser, &st)) return false;
+                da_push(&f.body, st);
+            }
+            if (parser_is_empty(parser)) {
+                log_diagnostic(LL_ERROR, "Expected a `}` to close a function body");
+                report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                             parser->origin.src.items, parser->origin.name);
+                return false;
+            }
+            parser_pop(parser);
+            da_push(&out->fs, f);
+        }
     }
 
     return true;
@@ -194,6 +234,7 @@ bool parser_parse_statement(Parser *parser, AstStatement *out) {
             out->type = AST_LET;
             break;
         }
+        case KT_DEF: TODO(); break;
         }
     } else if (t.type == TT_IDENT) {
         switch (parser_peek(parser, 0).type) {

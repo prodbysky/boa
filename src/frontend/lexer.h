@@ -18,6 +18,10 @@ typedef enum {
     TT_IDENT,
     TT_SEMICOLON,
     TT_ASSIGN,
+    TT_OPEN_CURLY,
+    TT_CLOSE_CURLY,
+    TT_OPEN_PAREN,
+    TT_CLOSE_PAREN,
 } TokenType;
 
 typedef enum {
@@ -30,7 +34,8 @@ typedef enum {
 typedef enum {
     KT_NO = 0,
     KT_RETURN,
-    KT_LET
+    KT_LET,
+    KT_DEF,
 } KeywordType;
 
 typedef struct {

@@ -66,7 +66,42 @@ bool lexer_run(Lexer *lexer, Tokens *out) {
             da_push(out, t);
             lexer_consume(lexer);
             continue;
-
+        }
+        case '{': {
+            Token t = {0};
+            t.type = TT_OPEN_CURLY;
+            t.len = 1;
+            t.begin = lexer->file.src.items;
+            da_push(out, t);
+            lexer_consume(lexer);
+            continue;
+        }
+        case '}': {
+            Token t = {0};
+            t.type = TT_CLOSE_CURLY;
+            t.len = 1;
+            t.begin = lexer->file.src.items;
+            da_push(out, t);
+            lexer_consume(lexer);
+            continue;
+        }
+        case '(': {
+            Token t = {0};
+            t.type = TT_OPEN_PAREN;
+            t.len = 1;
+            t.begin = lexer->file.src.items;
+            da_push(out, t);
+            lexer_consume(lexer);
+            continue;
+        }
+        case ')': {
+            Token t = {0};
+            t.type = TT_CLOSE_PAREN;
+            t.len = 1;
+            t.begin = lexer->file.src.items;
+            da_push(out, t);
+            lexer_consume(lexer);
+            continue;
         }
         }
 
@@ -81,7 +116,7 @@ bool lexer_lex_ident_or_keyword(Lexer *lexer, Token *out) {
     ASSERT(lexer_peek(lexer, 0) == '_' || isalpha(lexer_peek(lexer, 0)), "The caller ensures this condition");
     const char *begin = lexer->file.src.items;
 
-    while (!lexer_is_empty(lexer) && (lexer_peek(lexer, 0) == '_' || isalpha(lexer_peek(lexer, 0))))
+    while (!lexer_is_empty(lexer) && (lexer_peek(lexer, 0) == '_' || isalpha(lexer_peek(lexer, 0)) || isdigit(lexer_peek(lexer, 0))))
         lexer_consume(lexer);
 
     const char *end = lexer->file.src.items;
@@ -108,12 +143,14 @@ bool lexer_lex_ident_or_keyword(Lexer *lexer, Token *out) {
 bool lexer_ident_is_keyword(const char *begin, ptrdiff_t len) {
     if (strncmp(begin, "return", len) == 0) return true;
     if (strncmp(begin, "let", len) == 0) return true;
+    if (strncmp(begin, "def", len) == 0) return true;
     return false;
 }
 
 KeywordType lexer_keyword(const char *begin, ptrdiff_t len) {
     if (strncmp(begin, "return", len) == 0) return KT_RETURN;
     if (strncmp(begin, "let", len) == 0) return KT_LET;
+    if (strncmp(begin, "def", len) == 0) return KT_DEF;
     return KT_NO;
 }
 

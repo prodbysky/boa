@@ -63,14 +63,14 @@ int main(int argc, char **argv) {
                 .items = tokens.items,
             },
     };
-    AstTree tree = {0};
-    if (!parser_parse(&p, &tree)) {
+    AstRoot root = {0};
+    if (!parser_parse(&p, &root)) {
         result = 1;
         goto defer;
     }
 
     SSAModule mod = {0};
-    if (!generate_ssa_module(&tree, &mod)) {
+    if (!generate_ssa_module(&root, &mod)) {
         result = 1;
         goto defer;
     }
@@ -88,7 +88,7 @@ int main(int argc, char **argv) {
     if (!c.keep_build_artifacts) t->cleanup(c.output_name);
 
 defer:
-    if (tree.items != NULL) free(tree.items);
+    if (root.fs.items != NULL) free(root.fs.items);
     if (mod.functions.items != NULL) {
         for (size_t i = 0; i < mod.functions.count; i++) {
             if (mod.functions.items[i].body.items != NULL) free(mod.functions.items[i].body.items);
