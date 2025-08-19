@@ -35,10 +35,8 @@ bool parser_parse(Parser *parser, AstRoot *out) {
                                  parser->origin.src.items, parser->origin.name);
                     return false;
                 }
-                if (!parser_expect_and_skip(parser, TT_COMMA)) {
-                    break;
-                }
                 da_push(&f.args, arg_name);
+                if (!parser_expect_and_skip(parser, TT_COMMA)) { break; }
             }
             if (!parser_expect_and_skip(parser, TT_CLOSE_PAREN)) {
                 log_diagnostic(LL_ERROR, "Argument list wasn't terminated with a `)`");
@@ -129,9 +127,17 @@ bool parser_parse_primary(Parser *parser, AstExpression *out) {
             out->type = AET_FUNCTION_CALL;
             parser_pop(parser);
             Token closing_paren = parser_peek(parser, 0);
+            while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_CLOSE_PAREN) {
+                AstExpression arg = {0};
+                if (!parser_parse_expr(parser, &arg)) { return false; }
+                da_push(&out->func_call.args, arg);
+                if (!parser_expect_and_skip(parser, TT_COMMA)) { break; }
+            }
             if (!parser_expect_and_skip(parser, TT_CLOSE_PAREN)) {
-                log_message(LL_ERROR, "Function call with arguments are not supported yet");
-                TODO();
+                log_diagnostic(LL_ERROR, "Argument list wasn't terminated with a `)`");
+                report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                             parser->origin.src.items, parser->origin.name);
+                return false;
             }
             out->len = closing_paren.begin + 1 - t.begin;
             out->func_call.name = t.identifier;
@@ -145,6 +151,7 @@ bool parser_parse_primary(Parser *parser, AstExpression *out) {
         return true;
     }
     default: {
+
         log_diagnostic(LL_ERROR, "Expected an expression to be here");
         report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
                      parser->origin.src.items, parser->origin.name);
@@ -277,8 +284,14 @@ bool parser_parse_statement(Parser *parser, AstStatement *out) {
             out->type = AST_CALL;
             out->call.name = t.identifier;
             parser_pop(parser);
+            while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_CLOSE_PAREN) {
+                AstExpression arg = {0};
+                if (!parser_parse_expr(parser, &arg)) { return false; }
+                da_push(&out->call.args, arg);
+                if (!parser_expect_and_skip(parser, TT_COMMA)) { break; }
+            }
             if (!parser_expect_and_skip(parser, TT_CLOSE_PAREN)) {
-                log_diagnostic(LL_ERROR, "Expected `)` to close the function call parenthesis");
+                log_diagnostic(LL_ERROR, "Argument list wasn't terminated with a `)`");
                 report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
                              parser->origin.src.items, parser->origin.name);
                 return false;
