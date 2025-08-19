@@ -15,6 +15,24 @@ typedef struct {
 
 typedef enum { AET_PRIMARY, AET_BINARY, AET_IDENT, AET_FUNCTION_CALL } AstExpressionType;
 
+
+typedef struct AstExpression AstExpression;
+
+// Where a function is called
+typedef struct {
+    AstExpression* items;
+    size_t count;
+    size_t capacity;
+} FunctionArgsIn;
+
+// Where a function is defined
+// TODO: Types (since all things are just u64 now)
+typedef struct {
+    StringView* items;
+    size_t count;
+    size_t capacity;
+} FunctionArgsOut;
+
 typedef struct AstExpression {
     AstExpressionType type;
     const char *begin;
@@ -29,9 +47,11 @@ typedef struct AstExpression {
         } bin;
         struct {
             StringView name;
+            FunctionArgsIn args;
         } func_call;
     };
 } AstExpression;
+
 
 typedef enum { AST_RETURN, AST_LET, AST_ASSIGN, AST_CALL} AstStatementType;
 
@@ -50,6 +70,7 @@ typedef struct {
         } let, assign;
         struct {
             StringView name;
+            FunctionArgsIn args;
         } call;
     };
 } AstStatement;
@@ -70,6 +91,7 @@ typedef struct {
 typedef struct {
     StringView name;
     AstFunctionBody body;
+    FunctionArgsOut args;
 } AstFunction;
 
 typedef struct {

@@ -19,14 +19,29 @@ bool parser_parse(Parser *parser, AstRoot *out) {
                              parser->origin.src.items, parser->origin.name);
                 return false;
             }
+            AstFunction f = {0};
+            f.name = name;
             if (!parser_expect_and_skip(parser, TT_OPEN_PAREN)) {
                 log_diagnostic(LL_ERROR, "Expected an `(` symbol here to denote an argument list");
                 report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
                              parser->origin.src.items, parser->origin.name);
                 return false;
             }
+            while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_CLOSE_PAREN) {
+                StringView arg_name = {0};
+                if (!parser_expect_ident(parser, &arg_name)) {
+                    log_diagnostic(LL_ERROR, "Expected an argument name here");
+                    report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                                 parser->origin.src.items, parser->origin.name);
+                    return false;
+                }
+                if (!parser_expect_and_skip(parser, TT_COMMA)) {
+                    break;
+                }
+                da_push(&f.args, arg_name);
+            }
             if (!parser_expect_and_skip(parser, TT_CLOSE_PAREN)) {
-                log_diagnostic(LL_ERROR, "Boa does not yet support function arguments");
+                log_diagnostic(LL_ERROR, "Argument list wasn't terminated with a `)`");
                 report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
                              parser->origin.src.items, parser->origin.name);
                 return false;
@@ -37,8 +52,6 @@ bool parser_parse(Parser *parser, AstRoot *out) {
                              parser->origin.src.items, parser->origin.name);
                 return false;
             }
-            AstFunction f = {0};
-            f.name = name;
             while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_CLOSE_CURLY) {
                 AstStatement st = {0};
                 if (!parser_parse_statement(parser, &st)) return false;
