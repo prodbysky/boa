@@ -29,6 +29,7 @@ bool parser_parse(Parser *parser, AstRoot *out) {
             }
             while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_CLOSE_PAREN) {
                 StringView arg_name = {0};
+                log_message(LL_INFO, "%zu", f.args.count);
                 if (!parser_expect_ident(parser, &arg_name)) {
                     log_diagnostic(LL_ERROR, "Expected an argument name here");
                     report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
@@ -36,7 +37,32 @@ bool parser_parse(Parser *parser, AstRoot *out) {
                     return false;
                 }
                 da_push(&f.args, arg_name);
-                if (!parser_expect_and_skip(parser, TT_COMMA)) { break; }
+                if (parser_is_empty(parser)) {
+                    log_diagnostic(LL_ERROR, "Unexpected end of input in argument list");
+                    return false;
+                }
+
+                Token next = parser_peek(parser, 0);
+                if (next.type == TT_CLOSE_PAREN) {
+                    // End of argument list - this is fine, let the outer loop handle the closing paren
+                    break;
+                } else if (next.type == TT_COMMA) {
+                    // More arguments expected
+                    parser_pop(parser); // consume the comma
+                    // Continue to next iteration to parse the next argument
+
+                    // Check that there's actually another argument after the comma
+                    if (parser_is_empty(parser) || parser_peek(parser, 0).type == TT_CLOSE_PAREN) {
+                        log_diagnostic(LL_ERROR, "Expected argument name after comma");
+                        report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                                     parser->origin.src.items, parser->origin.name);
+                        return false;
+                    }
+                } else {
+                    log_diagnostic(LL_ERROR, "Expected comma or closing parenthesis in argument list");
+                    report_error(next.begin, next.begin + next.len, parser->origin.src.items, parser->origin.name);
+                    return false;
+                }
             }
             if (!parser_expect_and_skip(parser, TT_CLOSE_PAREN)) {
                 log_diagnostic(LL_ERROR, "Argument list wasn't terminated with a `)`");
@@ -129,9 +155,9 @@ bool parser_parse_primary(Parser *parser, AstExpression *out) {
             Token closing_paren = parser_peek(parser, 0);
             while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_CLOSE_PAREN) {
                 AstExpression arg = {0};
-                if (!parser_parse_expr(parser, &arg)) { return false; }
+                if (!parser_parse_expr(parser, &arg)) return false;
                 da_push(&out->func_call.args, arg);
-                if (!parser_expect_and_skip(parser, TT_COMMA)) { break; }
+                if (!parser_expect_and_skip(parser, TT_COMMA)) break;
             }
             if (!parser_expect_and_skip(parser, TT_CLOSE_PAREN)) {
                 log_diagnostic(LL_ERROR, "Argument list wasn't terminated with a `)`");
