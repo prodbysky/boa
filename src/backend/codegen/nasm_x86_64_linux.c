@@ -25,6 +25,10 @@ static void value_asm_repr(FILE *sink, const SSAValue *value);
 
 static size_t f_count = 0;
 
+const char *idx_to_reg[] = {
+    "rdi", "rsi", "rdx", "rcx", "r8", "r9",
+};
+
 bool nasm_x86_64_linux_generate_file(FILE *sink, const SSAModule *mod) {
     // prelude of some sorts
     fprintf(sink, "section .text\n");
@@ -36,6 +40,7 @@ bool nasm_x86_64_linux_generate_file(FILE *sink, const SSAModule *mod) {
     fprintf(sink, "  mov rdi, rsi\n");
     fprintf(sink, "  syscall\n");
 
+
     for (size_t i = 0; i < mod->functions.count; i++) { generate_function(sink, &mod->functions.items[i]); }
 
     return true;
@@ -44,6 +49,13 @@ bool nasm_x86_64_linux_generate_file(FILE *sink, const SSAModule *mod) {
 static bool generate_function(FILE *sink, const SSAFunction *func) {
     fprintf(sink, STR_FMT ":\n", STR_ARG(func->name));
     fprintf(sink, "  enter %ld, 0\n", func->max_temps * 8);
+
+    for (size_t i = 0; i < func->arg_count && i < 6; i++) {
+        fprintf(sink, "  mov [rbp - %zu], %s\n", (i + 1) * 8, idx_to_reg[i]);
+    }
+    for (int i = func->arg_count - 1; i > 5; i--) {
+        fprintf(sink, "  mov [rbp - %d], [rbp + %d]\n", (i + 1) * 8, 16 + (i * 8));
+    }
 
     for (size_t i = 0; i < func->body.count; i++) { generate_statement(sink, &func->body.items[i]); }
 
@@ -156,7 +168,20 @@ static void emit_assign(FILE *sink, const SSAStatement *st) {
 
 static void emit_call(FILE *sink, const SSAStatement *st) {
     ASSERT(st->type == SSAST_CALL, "This function should only be called when the type of the statement is SSAST_CALL");
-    fprintf(sink, "  call "STR_FMT"\n", STR_ARG(st->call.name));
+
+    // here the ir generator or something else up top already checked that the function exists
+    // and enough of the arguments are provided so now we just poop
+    for (size_t i = 0; i < st->call.args.count && i < 6; i++) {
+        move_value_into_register(sink, idx_to_reg[i], &st->call.args.items[i]);
+    }
+    // then for the left over poop we stack it i think
+    for (int i = (int)st->call.args.count - 1; i > 5; i--) {
+        fprintf(sink, "  push ");
+        value_asm_repr(sink, &st->call.args.items[i]);
+        fprintf(sink, "\n");
+    }
+
+    fprintf(sink, "  call " STR_FMT "\n", STR_ARG(st->call.name));
     if (st->call.returns) {
         fprintf(sink, "  mov ");
         value_asm_repr(sink, &st->call.return_v);
@@ -208,3 +233,17 @@ static void value_asm_repr(FILE *sink, const SSAValue *value) {
     }
     }
 }
+
+// NOTES:
+// SystemV ABI:
+// Integer/ptr args (1..=6):
+//   RDI
+//   RSI
+//   RDX
+//   RCX
+//   R8
+//   R9
+//   Extra to ze stack
+// RBX, RSP, RBP, and R12–R15 if used must be saved and restored before returning
+// Ze stack must be alligned to 16 bytes
+// Could implement a `red zone`

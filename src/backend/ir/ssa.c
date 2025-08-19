@@ -11,6 +11,15 @@ bool generate_ssa_module(const AstRoot *ast, SSAModule *out) {
     for (size_t i = 0; i < ast->fs.count; i++) {
         AstFunction *f = &ast->fs.items[i];
         SSAFunction func = {0};
+        func.arg_count = f->args.count;
+        func.max_temps = f->args.count - 1;
+        for (size_t i = 0; i < f->args.count; i++) {
+            NameValuePair pair = {
+                .name = f->args.items[i],
+                .index = i
+            };
+            da_push(&func.variables, pair);
+        }
         func.name = ast->fs.items[i].name;
         for (size_t i = 0; i < f->body.count; i++) {
             if (!generate_ssa_statement(ast, &f->body.items[i], &func)) return false;
@@ -81,7 +90,14 @@ bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunc
         return true;
     }
     case AST_CALL: {
-        SSAStatement call_st = {.type = SSAST_CALL, .call = {.name = st->call.name}};
+        SSAInputArgs args = {0};
+        for (size_t i = 0; i < st->call.args.count; i++) {
+            SSAValue v = {0};
+            if (!generate_ssa_expr(tree, &st->call.args.items[i], &v, out)) return false;
+            da_push(&args, v);
+        }
+
+        SSAStatement call_st = {.type = SSAST_CALL, .call = {.name = st->call.name, .args = args}};
         da_push(&out->body, call_st);
         return true;
     }
