@@ -19,7 +19,7 @@ bool generate_ssa_module(const AstRoot *ast, SSAModule *out) {
         }
         func.name = ast->fs.items[i].name;
         for (size_t i = 0; i < f->body.count; i++) {
-            if (!generate_ssa_statement(ast, &f->body.items[i], &func)) return false;
+            if (!generate_ssa_statement(ast, &f->body.items[i], &func, &out->strings)) return false;
         }
         da_push(&out->functions, func);
     }
@@ -51,7 +51,7 @@ bool add_variable(SSABadBoyStack *stack, NameValuePair pair) {
     return true;
 }
 
-bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunction *out) {
+bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunction *out, SSAStrings* strs) {
     ASSERT(st, "Sanity check");
     switch (st->type) {
     case AST_RETURN: {
@@ -60,7 +60,7 @@ bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunc
             return true;
         } else {
             SSAValue value = {0};
-            if (!generate_ssa_expr(tree, &st->ret.return_expr, &value, out)) return false;
+            if (!generate_ssa_expr(tree, &st->ret.return_expr, &value, out, strs)) return false;
             SSAStatement st = (SSAStatement){.type = SSAST_RETURN, .ret = {value}};
             da_push(&out->body, st);
             return true;
@@ -68,7 +68,7 @@ bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunc
     }
     case AST_LET: {
         SSAValue variable_value = {0};
-        if (!generate_ssa_expr(tree, &st->let.value, &variable_value, out)) return false;
+        if (!generate_ssa_expr(tree, &st->let.value, &variable_value, out, strs)) return false;
         TempValueIndex place = out->max_temps++;
         NameValuePair pair = {.name = st->let.name, .index = place};
         SSAStatement st = {
@@ -81,7 +81,7 @@ bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunc
     }
     case AST_ASSIGN: {
         SSAValue variable_value_new = {0};
-        if (!generate_ssa_expr(tree, &st->assign.value, &variable_value_new, out)) return false;
+        if (!generate_ssa_expr(tree, &st->assign.value, &variable_value_new, out, strs)) return false;
         NameValuePair *p;
         if (!get_if_known_variable(&out->scopes, st->assign.name, &p)) {
             log_diagnostic(LL_ERROR, "Tried to reassign an unknown variable");
@@ -99,7 +99,7 @@ bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunc
         SSAInputArgs args = {0};
         for (size_t i = 0; i < st->call.args.count; i++) {
             SSAValue v = {0};
-            if (!generate_ssa_expr(tree, &st->call.args.items[i], &v, out)) return false;
+            if (!generate_ssa_expr(tree, &st->call.args.items[i], &v, out, strs)) return false;
             da_push(&args, v);
         }
         SSAStatement call_st = {.type = SSAST_CALL, .call = {.name = st->call.name, .args = args}};
@@ -108,13 +108,13 @@ bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunc
     }
     case AST_IF: {
         SSAValue v = {0};
-        if (!generate_ssa_expr(tree, &st->if_st.cond, &v, out)) return false;
+        if (!generate_ssa_expr(tree, &st->if_st.cond, &v, out, strs)) return false;
         uint64_t jump_over = out->label_count++;
         SSAStatement jump_st = {.type = SSAST_JZ, .jz = {.cond = v, .to = jump_over}};
         da_push(&out->body, jump_st);
         da_push(&out->scopes, (SSANameToValue){});
         for (size_t i = 0; i < st->if_st.block.count; i++) {
-            if (!generate_ssa_statement(tree, &st->if_st.block.items[i], out)) return false;
+            if (!generate_ssa_statement(tree, &st->if_st.block.items[i], out, strs)) return false;
         }
         SSAStatement label_st = {
             .type = SSAST_LABEL,
@@ -137,12 +137,12 @@ bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunc
         };
         da_push(&out->body, header_st);
         SSAValue v = {0};
-        if (!generate_ssa_expr(tree, &st->while_st.cond, &v, out)) return false;
+        if (!generate_ssa_expr(tree, &st->while_st.cond, &v, out, strs)) return false;
         SSAStatement jump_st = {.type = SSAST_JZ, .jz = {.cond = v, .to = over}};
         da_push(&out->body, jump_st);
         da_push(&out->scopes, (SSANameToValue){});
         for (size_t i = 0; i < st->while_st.block.count; i++) {
-            if (!generate_ssa_statement(tree, &st->while_st.block.items[i], out)) return false;
+            if (!generate_ssa_statement(tree, &st->while_st.block.items[i], out, strs)) return false;
         }
         SSAStatement jump_back_st = {.type = SSAST_JMP, .jmp = header};
         da_push(&out->body, jump_back_st);
@@ -151,10 +151,7 @@ bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunc
         return true;
     }
     case AST_ASM: {
-        SSAStatement s = {
-            .type = SSAST_ASM,
-            .asm = st->asm
-        };
+        SSAStatement s = {.type = SSAST_ASM, .asm = st->asm};
         da_push(&out->body, s);
         return true;
     }
@@ -164,7 +161,8 @@ bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunc
                 "statement");
     return false;
 }
-bool generate_ssa_expr(const AstRoot *tree, const AstExpression *expr, SSAValue *out_value, SSAFunction *out) {
+bool generate_ssa_expr(const AstRoot *tree, const AstExpression *expr, SSAValue *out_value, SSAFunction *out,
+                       SSAStrings *strs) {
     ASSERT(expr, "Sanity check");
     ASSERT(out_value, "Sanity check");
 
@@ -177,8 +175,8 @@ bool generate_ssa_expr(const AstRoot *tree, const AstExpression *expr, SSAValue 
     case AET_BINARY: {
         SSAValue l = {0};
         SSAValue r = {0};
-        if (!generate_ssa_expr(tree, expr->bin.l, &l, out)) return false;
-        if (!generate_ssa_expr(tree, expr->bin.r, &r, out)) return false;
+        if (!generate_ssa_expr(tree, expr->bin.l, &l, out, strs)) return false;
+        if (!generate_ssa_expr(tree, expr->bin.r, &r, out, strs)) return false;
         SSAValue result = {.type = SSAVT_TEMP, .temp = out->max_temps++};
         SSAStatement st = {.binop = {.l = l, .r = r, .result = result}};
         switch (expr->bin.op) {
@@ -214,7 +212,7 @@ bool generate_ssa_expr(const AstRoot *tree, const AstExpression *expr, SSAValue 
         SSAInputArgs args = {0};
         for (size_t i = 0; i < expr->func_call.args.count; i++) {
             SSAValue v = {0};
-            if (!generate_ssa_expr(tree, &expr->func_call.args.items[i], &v, out)) return false;
+            if (!generate_ssa_expr(tree, &expr->func_call.args.items[i], &v, out, strs)) return false;
             da_push(&args, v);
         }
         SSAStatement st = {.type = SSAST_CALL,
@@ -226,6 +224,12 @@ bool generate_ssa_expr(const AstRoot *tree, const AstExpression *expr, SSAValue 
                            }};
         da_push(&out->body, st);
         *out_value = result_value;
+        return true;
+    }
+    case AET_STRING: {
+        da_push(strs, expr->string);
+        out_value->type = SSAVT_STRING;
+        out_value->string_index = strs->count - 1;
         return true;
     }
     }

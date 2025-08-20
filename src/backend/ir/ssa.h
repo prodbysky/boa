@@ -9,6 +9,7 @@
 typedef enum {
     SSAVT_CONST,
     SSAVT_TEMP,
+    SSAVT_STRING,
 } SSAValueType;
 
 typedef uint64_t ConstValue;
@@ -19,6 +20,9 @@ typedef struct {
     union {
         ConstValue constant;
         TempValueIndex temp;
+        // strings will be in the data section like this
+        // str%zu... db ..., 0
+        uint64_t string_index;
     };
 } SSAValue;
 
@@ -31,7 +35,7 @@ typedef enum {
     SSAST_DIV,
     SSAST_ASSIGN,
     SSAST_CALL,
-    SSAST_LABEL,
+    SSAST_LABEL, 
     SSAST_JZ,
     SSAST_JMP,
     SSAST_ASM,
@@ -115,11 +119,18 @@ typedef struct {
 } SSAFunctions;
 
 typedef struct {
+    StringView* items;
+    size_t count;
+    size_t capacity;
+} SSAStrings;
+
+typedef struct {
     SSAFunctions functions;
+    SSAStrings strings;
 } SSAModule;
 
 bool generate_ssa_module(const AstRoot* ast, SSAModule* out);
-bool generate_ssa_statement(const AstRoot* ast, const AstStatement* st, SSAFunction* out);
-bool generate_ssa_expr(const AstRoot* ast, const AstExpression* expr, SSAValue* out_value, SSAFunction* out);
+bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunction *out, SSAStrings* strs);
+bool generate_ssa_expr(const AstRoot *tree, const AstExpression *expr, SSAValue *out_value, SSAFunction *out, SSAStrings* strs);
 
 #endif

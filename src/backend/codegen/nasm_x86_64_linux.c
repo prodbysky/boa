@@ -30,6 +30,7 @@ const char *idx_to_reg[] = {
 };
 
 bool nasm_x86_64_linux_generate_file(FILE *sink, const SSAModule *mod) {
+
     // prelude of some sorts
     fprintf(sink, "section .text\n");
     fprintf(sink, "global _start\n");
@@ -41,6 +42,11 @@ bool nasm_x86_64_linux_generate_file(FILE *sink, const SSAModule *mod) {
     fprintf(sink, "  syscall\n");
 
     for (size_t i = 0; i < mod->functions.count; i++) { generate_function(sink, &mod->functions.items[i]); }
+
+    fprintf(sink, "section .data\n");
+    for (size_t i = 0; i < mod->strings.count; i++) {
+        fprintf(sink, "  str_%zu db \"%.*s\", 0\n", i, (int)mod->strings.items[i].count, mod->strings.items[i].items);
+    }
 
     return true;
 }
@@ -260,6 +266,9 @@ static void value_asm_repr(FILE *sink, const SSAValue *value) {
     case SSAVT_TEMP: {
         fprintf(sink, "qword [rbp - %ld]", (value->temp + 1) * 8);
         break;
+    }
+    case SSAVT_STRING: {
+        fprintf(sink, "str_%zu", (value->string_index));
     }
     }
 }
