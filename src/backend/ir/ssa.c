@@ -88,13 +88,10 @@ bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunc
             report_error(st->begin, st->begin + st->len, tree->source.src.items, tree->source.name);
             return false;
         }
-        TempValueIndex place = out->max_temps++;
-
         SSAStatement st = {
             .type = SSAST_ASSIGN,
-            .assign = {.place = place, .value = variable_value_new},
+            .assign = {.place = p->index, .value = variable_value_new},
         };
-        p->index = place;
         da_push(&out->body, st);
         return true;
     }
@@ -124,6 +121,32 @@ bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunc
             .label = jump_over,
         };
         da_push(&out->body, label_st);
+        out->scopes.count--;
+        return true;
+    }
+    case AST_WHILE: {
+        uint64_t header = out->label_count++;
+        uint64_t over = out->label_count++;
+        SSAStatement header_st = {
+            .type = SSAST_LABEL,
+            .label = header,
+        };
+        SSAStatement over_st = {
+            .type = SSAST_LABEL,
+            .label = over,
+        };
+        da_push(&out->body, header_st);
+        SSAValue v = {0};
+        if (!generate_ssa_expr(tree, &st->if_st.cond, &v, out)) return false;
+        SSAStatement jump_st = {.type = SSAST_JZ, .jz = {.cond = v, .to = over}};
+        da_push(&out->body, jump_st);
+        da_push(&out->scopes, (SSANameToValue){});
+        for (size_t i = 0; i < st->if_st.block.count; i++) {
+            if (!generate_ssa_statement(tree, &st->if_st.block.items[i], out)) return false;
+        }
+        SSAStatement jump_back_st = {.type = SSAST_JMP, .jmp = header};
+        da_push(&out->body, jump_back_st);
+        da_push(&out->body, over_st);
         out->scopes.count--;
         return true;
     }

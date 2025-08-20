@@ -64,6 +64,7 @@ typedef enum {
     AST_ASSIGN,
     AST_CALL,
     AST_IF,
+    AST_WHILE,
 } AstStatementType;
 
 struct AstStatement{
@@ -87,6 +88,10 @@ struct AstStatement{
             AstExpression cond;
             AstBlock block;
         } if_st;
+        struct {
+            AstExpression cond;
+            AstBlock block;
+        } while_st;
     };
 };
 

@@ -304,6 +304,15 @@ bool parser_parse_statement(Parser *parser, AstStatement *out) {
             out->type = AST_IF;
             return true;
         }
+        case KT_WHILE: {
+            AstExpression cond = {0};
+            if (!parser_parse_expr(parser, &cond)) return false;
+            out->if_st.cond = cond;
+            if (!parser_parse_block(parser, &out->if_st.block)) return false;
+            out->len = (parser->last_token.begin + parser->last_token.len) - out->begin;
+            out->type = AST_WHILE;
+            return true;
+        }
         case KT_DEF:
             log_message(LL_INFO, "Nested functions aren't supported");
             TODO();
