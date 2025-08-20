@@ -1,0 +1,33 @@
+def main() {
+    write("fuck yoooo");
+    return 0;
+}
+
+def strlen(str) {
+    __asm__(
+        mov rax, rdi
+        mov rbx, 0
+        loop:
+        mov cl, [rax]
+        cmp cl, 0
+        je done
+        inc rbx
+        inc rax
+        jmp loop
+        done:
+        mov rax, rbx
+    );
+    return;
+}
+
+def write(str) {
+    let len = strlen(str);
+    __asm__(
+        mov rsi, rdi
+        mov rdx, rax
+        mov rax, 1 
+        mov rdi, 1 
+        syscall
+    );
+    return;
+}

@@ -177,8 +177,23 @@ bool parser_parse_primary(Parser *parser, AstExpression *out) {
         out->begin = t.begin;
         return true;
     }
+    case TT_DOUBLE_QUOTE: {
+        while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_DOUBLE_QUOTE) parser_pop(parser);
+        if (parser_is_empty(parser)) {
+            log_diagnostic(LL_ERROR, "Unterminated string literal");
+            report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                         parser->origin.src.items, parser->origin.name);
+            return false;
+        }
+        parser_pop(parser);
+        out->type = AET_STRING;
+        out->begin = t.begin;
+        out->len = parser->last_token.begin - t.begin;
+        out->string.items = t.begin + 1;
+        out->string.count = (parser->last_token.begin - t.begin) - 1;
+        return true;
+    }
     default: {
-
         log_diagnostic(LL_ERROR, "Expected an expression to be here");
         report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
                      parser->origin.src.items, parser->origin.name);
