@@ -2,7 +2,6 @@
 
 typedef enum {
     TK_Linux_x86_64_NASM,
-    TK_Win_x86_64_MINGW,
     TK_Count,
 } TargetKind;
 

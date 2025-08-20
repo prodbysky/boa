@@ -12,7 +12,6 @@ Yeah so I'm making another language :DD
 ```
 
 ## Supported targets
-- Windows (via mingw)
 - Linux (via nasm)
 
 ## Code guidelines (be 'more formal')
