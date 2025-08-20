@@ -22,6 +22,7 @@ typedef enum {
     TT_CLOSE_CURLY,
     TT_OPEN_PAREN,
     TT_CLOSE_PAREN,
+    TT_DOUBLE_QUOTE,
     TT_COMMA,
 } TokenType;
 

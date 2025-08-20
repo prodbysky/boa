@@ -13,7 +13,13 @@ typedef struct {
     Arena *arena;
 } Parser;
 
-typedef enum { AET_PRIMARY, AET_BINARY, AET_IDENT, AET_FUNCTION_CALL } AstExpressionType;
+typedef enum {
+    AET_PRIMARY,
+    AET_BINARY,
+    AET_IDENT,
+    AET_FUNCTION_CALL,
+    AET_STRING,
+} AstExpressionType;
 
 typedef struct AstExpression AstExpression;
 typedef struct AstStatement AstStatement;
@@ -55,6 +61,7 @@ typedef struct AstExpression {
             StringView name;
             FunctionArgsIn args;
         } func_call;
+        StringView string;
     };
 } AstExpression;
 
@@ -68,7 +75,7 @@ typedef enum {
     AST_ASM,
 } AstStatementType;
 
-struct AstStatement{
+struct AstStatement {
     AstStatementType type;
     const char *begin;
     ptrdiff_t len;
@@ -97,14 +104,12 @@ struct AstStatement{
     };
 };
 
-
 typedef struct {
     AstStatement *items;
     SourceFileView source;
     size_t count;
     size_t capacity;
 } AstTree;
-
 
 typedef struct {
     StringView name;
@@ -150,6 +155,6 @@ bool parser_parse_term(Parser *parser, AstExpression *out);
 bool parser_parse_primary(Parser *parser, AstExpression *out);
 
 bool parser_parse_statement(Parser *parser, AstStatement *out);
-bool parser_parse_block(Parser* parser, AstBlock* out);
+bool parser_parse_block(Parser *parser, AstBlock *out);
 
 #endif
