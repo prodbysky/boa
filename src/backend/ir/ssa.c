@@ -137,12 +137,12 @@ bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunc
         };
         da_push(&out->body, header_st);
         SSAValue v = {0};
-        if (!generate_ssa_expr(tree, &st->if_st.cond, &v, out)) return false;
+        if (!generate_ssa_expr(tree, &st->while_st.cond, &v, out)) return false;
         SSAStatement jump_st = {.type = SSAST_JZ, .jz = {.cond = v, .to = over}};
         da_push(&out->body, jump_st);
         da_push(&out->scopes, (SSANameToValue){});
-        for (size_t i = 0; i < st->if_st.block.count; i++) {
-            if (!generate_ssa_statement(tree, &st->if_st.block.items[i], out)) return false;
+        for (size_t i = 0; i < st->while_st.block.count; i++) {
+            if (!generate_ssa_statement(tree, &st->while_st.block.items[i], out)) return false;
         }
         SSAStatement jump_back_st = {.type = SSAST_JMP, .jmp = header};
         da_push(&out->body, jump_back_st);
