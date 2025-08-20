@@ -54,7 +54,8 @@ static bool generate_function(FILE *sink, const SSAFunction *func) {
         fprintf(sink, "  mov [rbp - %zu], %s\n", (i + 1) * 8, idx_to_reg[i]);
     }
     for (int i = func->arg_count - 1; i > 5; i--) {
-        fprintf(sink, "  mov [rbp - %d], [rbp + %d]\n", (i + 1) * 8, 16 + (i * 8));
+        fprintf(sink, "  mov rax, [rbp + %d]\n", 16 + ((i - 6) * 8));
+        fprintf(sink, "  mov [rbp - %d], rax\n", (i + 1) * 8);
     }
 
     for (size_t i = 0; i < func->body.count; i++) { generate_statement(sink, &func->body.items[i]); }

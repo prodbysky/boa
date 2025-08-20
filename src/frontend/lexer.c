@@ -1,8 +1,8 @@
 #include "lexer.h"
 #include "../log.h"
 #include "../util.h"
-#include <ctype.h>
-#include <stdio.h>
+#include <ctype.h> 
+#include <stdio.h> 
 #include <stdlib.h>
 #include <string.h>
 
@@ -101,9 +101,9 @@ bool lexer_lex_ident_or_keyword(Lexer *lexer, Token *out) {
 bool lexer_ident_is_keyword(const char *begin, ptrdiff_t len) { return lexer_keyword(begin, len) != KT_NO; }
 
 KeywordType lexer_keyword(const char *begin, ptrdiff_t len) {
-    if (strncmp(begin, "return", len) == 0) return KT_RETURN;
-    if (strncmp(begin, "let", len) == 0) return KT_LET;
-    if (strncmp(begin, "def", len) == 0) return KT_DEF;
+    if (len == 6 && strncmp(begin, "return", len) == 0) return KT_RETURN;
+    if (len == 3 && strncmp(begin, "let", len) == 0) return KT_LET;
+    if (len == 3 && strncmp(begin, "def", len) == 0) return KT_DEF;
     return KT_NO;
 }
 
