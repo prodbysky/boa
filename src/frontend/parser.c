@@ -29,7 +29,6 @@ bool parser_parse(Parser *parser, AstRoot *out) {
             }
             while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_CLOSE_PAREN) {
                 StringView arg_name = {0};
-                log_message(LL_INFO, "%zu", f.args.count);
                 if (!parser_expect_ident(parser, &arg_name)) {
                     log_diagnostic(LL_ERROR, "Expected an argument name here");
                     report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,

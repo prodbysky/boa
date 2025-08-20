@@ -184,9 +184,9 @@ static void emit_call(FILE *sink, const SSAStatement *st) {
         fprintf(sink, "\n");
     }
 
-    if (extra % 2 != 0) {
+    if (extra & 1) {
         // align to 16 bytes
-        fprintf(sink, "  sub rsp, 8");
+        fprintf(sink, "  sub rsp, 8\n");
     }
 
 
@@ -197,7 +197,7 @@ static void emit_call(FILE *sink, const SSAStatement *st) {
         fprintf(sink, ", rax\n");
     }
     if (extra != 0) {
-        size_t cleanup_size = (extra + (extra % 2)) * 8;
+        size_t cleanup_size = (extra + (extra & 1)) * 8;
         fprintf(sink, "  add rsp, %zu\n", cleanup_size);
     }
 }
