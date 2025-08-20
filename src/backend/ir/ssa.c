@@ -13,9 +13,9 @@ bool generate_ssa_module(const AstRoot *ast, SSAModule *out) {
         SSAFunction func = {0};
         func.arg_count = f->args.count;
         func.max_temps = f->args.count;
+        da_push(&func.scopes, (SSANameToValue){});
         for (size_t i = 0; i < f->args.count; i++) {
-            NameValuePair pair = {.name = f->args.items[i], .index = i};
-            da_push(&func.variables, pair);
+            add_variable(&func.scopes, (NameValuePair){.name = f->args.items[i], .index = i});
         }
         func.name = ast->fs.items[i].name;
         for (size_t i = 0; i < f->body.count; i++) {
@@ -27,15 +27,28 @@ bool generate_ssa_module(const AstRoot *ast, SSAModule *out) {
     return true;
 }
 
-bool get_if_known_variable(SSANameToValue *vals, StringView view, NameValuePair **out) {
-    for (size_t i = 0; i < vals->count; i++) {
-        if (strncmp(view.items, vals->items[i].name.items, view.count) == 0) {
-            *out = &vals->items[i];
-            return true;
+bool get_if_known_variable(SSABadBoyStack *vals, StringView view, NameValuePair **out) {
+    ASSERT(vals->count > 0,
+           "There should always be a scope in this struct if not that means someone popped an extra stack");
+    for (size_t i = vals->count; i != 0; i--) {
+        SSANameToValue *current_stack = &vals->items[i - 1];
+        for (size_t j = 0; j < current_stack->count; j++) {
+            if (strncmp(view.items, current_stack->items[j].name.items, view.count) == 0) {
+                *out = &current_stack->items[j];
+                return true;
+            }
         }
     }
 
     return false;
+}
+
+bool add_variable(SSABadBoyStack *stack, NameValuePair pair) {
+    ASSERT(stack->count > 0,
+           "There should always be a scope in this struct if not that means someone popped an extra stack");
+    SSANameToValue *scope = &stack->items[stack->count - 1];
+    da_push(scope, pair);
+    return true;
 }
 
 bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunction *out) {
@@ -63,25 +76,22 @@ bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunc
             .assign = {.place = place, .value = variable_value},
         };
         da_push(&out->body, st);
-        da_push(&out->variables, pair);
+        add_variable(&out->scopes, pair);
         return true;
     }
     case AST_ASSIGN: {
         SSAValue variable_value_new = {0};
         if (!generate_ssa_expr(tree, &st->assign.value, &variable_value_new, out)) return false;
         NameValuePair *p;
-        if (!get_if_known_variable(&out->variables, st->assign.name, &p)) {
+        if (!get_if_known_variable(&out->scopes, st->assign.name, &p)) {
             log_diagnostic(LL_ERROR, "Tried to reassign an unknown variable");
             report_error(st->begin, st->begin + st->len, tree->source.src.items, tree->source.name);
             return false;
         }
-        TempValueIndex place = out->max_temps++;
-
         SSAStatement st = {
             .type = SSAST_ASSIGN,
-            .assign = {.place = place, .value = variable_value_new},
+            .assign = {.place = p->index, .value = variable_value_new},
         };
-        p->index = place;
         da_push(&out->body, st);
         return true;
     }
@@ -94,6 +104,50 @@ bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunc
         }
         SSAStatement call_st = {.type = SSAST_CALL, .call = {.name = st->call.name, .args = args}};
         da_push(&out->body, call_st);
+        return true;
+    }
+    case AST_IF: {
+        SSAValue v = {0};
+        if (!generate_ssa_expr(tree, &st->if_st.cond, &v, out)) return false;
+        uint64_t jump_over = out->label_count++;
+        SSAStatement jump_st = {.type = SSAST_JZ, .jz = {.cond = v, .to = jump_over}};
+        da_push(&out->body, jump_st);
+        da_push(&out->scopes, (SSANameToValue){});
+        for (size_t i = 0; i < st->if_st.block.count; i++) {
+            if (!generate_ssa_statement(tree, &st->if_st.block.items[i], out)) return false;
+        }
+        SSAStatement label_st = {
+            .type = SSAST_LABEL,
+            .label = jump_over,
+        };
+        da_push(&out->body, label_st);
+        out->scopes.count--;
+        return true;
+    }
+    case AST_WHILE: {
+        uint64_t header = out->label_count++;
+        uint64_t over = out->label_count++;
+        SSAStatement header_st = {
+            .type = SSAST_LABEL,
+            .label = header,
+        };
+        SSAStatement over_st = {
+            .type = SSAST_LABEL,
+            .label = over,
+        };
+        da_push(&out->body, header_st);
+        SSAValue v = {0};
+        if (!generate_ssa_expr(tree, &st->while_st.cond, &v, out)) return false;
+        SSAStatement jump_st = {.type = SSAST_JZ, .jz = {.cond = v, .to = over}};
+        da_push(&out->body, jump_st);
+        da_push(&out->scopes, (SSANameToValue){});
+        for (size_t i = 0; i < st->while_st.block.count; i++) {
+            if (!generate_ssa_statement(tree, &st->while_st.block.items[i], out)) return false;
+        }
+        SSAStatement jump_back_st = {.type = SSAST_JMP, .jmp = header};
+        da_push(&out->body, jump_back_st);
+        da_push(&out->body, over_st);
+        out->scopes.count--;
         return true;
     }
     }
@@ -131,16 +185,15 @@ bool generate_ssa_expr(const AstRoot *tree, const AstExpression *expr, SSAValue 
         return true;
     }
     case AET_IDENT: {
-        for (size_t i = 0; i < out->variables.count; i++) {
-            if (strncmp(out->variables.items[i].name.items, expr->ident.items, expr->ident.count) == 0) {
-                out_value->type = SSAVT_TEMP;
-                out_value->temp = out->variables.items[i].index;
-                return true;
-            }
+        NameValuePair *p = NULL;
+        if (!get_if_known_variable(&out->scopes, expr->ident, &p)) {
+            log_diagnostic(LL_ERROR, "Found an unknown identifier in place of a expression");
+            report_error(expr->begin, expr->begin + expr->len, tree->source.src.items, tree->source.name);
+            return false;
         }
-        log_diagnostic(LL_ERROR, "Found an unknown identifier in place of a expression");
-        report_error(expr->begin, expr->begin + expr->len, tree->source.src.items, tree->source.name);
-        return false;
+        out_value->type = SSAVT_TEMP;
+        out_value->temp = p->index;
+        return true;
     }
     case AET_FUNCTION_CALL: {
         // TODO: Check for undefined functions

@@ -104,6 +104,8 @@ KeywordType lexer_keyword(const char *begin, ptrdiff_t len) {
     if (len == 6 && strncmp(begin, "return", len) == 0) return KT_RETURN;
     if (len == 3 && strncmp(begin, "let", len) == 0) return KT_LET;
     if (len == 3 && strncmp(begin, "def", len) == 0) return KT_DEF;
+    if (len == 2 && strncmp(begin, "if", len) == 0) return KT_IF;
+    if (len == 5 && strncmp(begin, "while", len) == 0) return KT_WHILE;
     return KT_NO;
 }
 

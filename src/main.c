@@ -85,7 +85,12 @@ defer:
     if (mod.functions.items != NULL) {
         for (size_t i = 0; i < mod.functions.count; i++) {
             if (mod.functions.items[i].body.items != NULL) free(mod.functions.items[i].body.items);
-            if (mod.functions.items[i].variables.items != NULL) free(mod.functions.items[i].variables.items);
+            for (size_t j = 0; j < mod.functions.items[i].scopes.count; j++) {
+                if (mod.functions.items[i].scopes.items[j].items != NULL) {
+                    free(mod.functions.items[i].scopes.items[j].items);
+                }
+            }
+            free(mod.functions.items[i].scopes.items);
         }
         free(mod.functions.items);
     }
