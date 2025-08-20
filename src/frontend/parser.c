@@ -313,10 +313,25 @@ bool parser_parse_statement(Parser *parser, AstStatement *out) {
             out->type = AST_WHILE;
             return true;
         }
-        case KT_DEF:
+        case KT_DEF: {
             log_message(LL_INFO, "Nested functions aren't supported");
             TODO();
             break;
+        }
+        case KT_ASM: {
+            out->type = AST_ASM;
+            if (!parser_expect_and_skip(parser, TT_OPEN_PAREN)) {
+                log_diagnostic(LL_ERROR, "Expected `(` to denote the beginning of the asm statement");
+                report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                             parser->origin.src.items, parser->origin.name);
+                return false;
+            }
+            const char *begin = parser->last_token.begin + 1;
+            while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_CLOSE_PAREN) parser_pop(parser);
+            const char *end = parser->last_token.begin + parser->last_token.len;
+            out->asm = (StringView){.items = begin, .count = end - begin};
+            return true;
+        }
         }
     } else if (t.type == TT_IDENT) {
         switch (parser_peek(parser, 0).type) {

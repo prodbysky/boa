@@ -65,6 +65,7 @@ typedef enum {
     AST_CALL,
     AST_IF,
     AST_WHILE,
+    AST_ASM,
 } AstStatementType;
 
 struct AstStatement{
@@ -92,6 +93,7 @@ struct AstStatement{
             AstExpression cond;
             AstBlock block;
         } while_st;
+        StringView asm;
     };
 };
 

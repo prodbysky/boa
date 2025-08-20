@@ -116,6 +116,10 @@ static bool generate_statement(FILE *sink, const SSAStatement *st) {
         fprintf(sink, "  jmp .l%zu\n", st->jmp);
         return true;
     }
+    case SSAST_ASM: {
+        fprintf(sink, STR_FMT"\n", STR_ARG(st->asm));
+        return true;
+    }
     }
     UNREACHABLE("oh no");
     return false;

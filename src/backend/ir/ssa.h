@@ -34,6 +34,7 @@ typedef enum {
     SSAST_LABEL,
     SSAST_JZ,
     SSAST_JMP,
+    SSAST_ASM,
 } SSAStatementType;
 
 typedef struct {
@@ -68,6 +69,7 @@ typedef struct {
             uint64_t to;
         } jz;
         uint64_t jmp, label;
+        StringView asm;
     };
 } SSAStatement;
 

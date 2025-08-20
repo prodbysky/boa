@@ -150,6 +150,14 @@ bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunc
         out->scopes.count--;
         return true;
     }
+    case AST_ASM: {
+        SSAStatement s = {
+            .type = SSAST_ASM,
+            .asm = st->asm
+        };
+        da_push(&out->body, s);
+        return true;
+    }
     }
     UNREACHABLE("This shouldn't ever be reached, so all statements should early return from their case in "
                 "the switch "

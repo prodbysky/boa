@@ -62,8 +62,12 @@ bool lexer_run(Lexer *lexer, Tokens *out) {
         case '(': lex_single_char(lexer, out, TT_OPEN_PAREN); continue;
         case ')': lex_single_char(lexer, out, TT_CLOSE_PAREN); continue;
         case ',': lex_single_char(lexer, out, TT_COMMA); continue;
+        default: {
+            log_diagnostic(LL_INFO, "Don't know some letter skipping for sake of asm");
+            lexer_consume(lexer);
+            continue;
         }
-        TODO();
+        }
     }
 
     return true;
@@ -106,6 +110,7 @@ KeywordType lexer_keyword(const char *begin, ptrdiff_t len) {
     if (len == 3 && strncmp(begin, "def", len) == 0) return KT_DEF;
     if (len == 2 && strncmp(begin, "if", len) == 0) return KT_IF;
     if (len == 5 && strncmp(begin, "while", len) == 0) return KT_WHILE;
+    if (len == 7 && strncmp(begin, "__asm__", len) == 0) return KT_ASM;
     return KT_NO;
 }
 
