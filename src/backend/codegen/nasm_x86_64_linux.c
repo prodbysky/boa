@@ -53,6 +53,7 @@ static bool generate_function(FILE *sink, const SSAFunction *func) {
     for (size_t i = 0; i < func->arg_count && i < 6; i++) {
         fprintf(sink, "  mov [rbp - %zu], %s\n", (i + 1) * 8, idx_to_reg[i]);
     }
+    // oh fuck naw :sob:
     for (int i = func->arg_count - 1; i > 5; i--) {
         fprintf(sink, "  mov rax, [rbp + %d]\n", 16 + ((i - 6) * 8));
         fprintf(sink, "  mov [rbp - %d], rax\n", (i + 1) * 8);
@@ -175,18 +176,29 @@ static void emit_call(FILE *sink, const SSAStatement *st) {
     for (size_t i = 0; i < st->call.args.count && i < 6; i++) {
         move_value_into_register(sink, idx_to_reg[i], &st->call.args.items[i]);
     }
-    // then for the left over poop we stack it i think
-    for (int i = (int)st->call.args.count - 1; i > 5; i--) {
+
+    size_t extra = st->call.args.count > 6 ? st->call.args.count - 6 : 0;
+    for (size_t i = st->call.args.count; i -->6;) {
         fprintf(sink, "  push ");
         value_asm_repr(sink, &st->call.args.items[i]);
         fprintf(sink, "\n");
     }
+
+    if (extra % 2 != 0) {
+        // align to 16 bytes
+        fprintf(sink, "  sub rsp, 8");
+    }
+
 
     fprintf(sink, "  call " STR_FMT "\n", STR_ARG(st->call.name));
     if (st->call.returns) {
         fprintf(sink, "  mov ");
         value_asm_repr(sink, &st->call.return_v);
         fprintf(sink, ", rax\n");
+    }
+    if (extra != 0) {
+        size_t cleanup_size = (extra + (extra % 2)) * 8;
+        fprintf(sink, "  add rsp, %zu\n", cleanup_size);
     }
 }
 
