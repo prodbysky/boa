@@ -45,7 +45,7 @@ bool parser_parse(Parser *parser, AstRoot *out) {
                 if (next.type == TT_CLOSE_PAREN) {
                     break;
                 } else if (next.type == TT_COMMA) {
-                    parser_pop(parser); 
+                    parser_pop(parser);
                     if (parser_is_empty(parser) || parser_peek(parser, 0).type == TT_CLOSE_PAREN) {
                         log_diagnostic(LL_ERROR, "Expected argument name after comma");
                         report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
@@ -64,27 +64,34 @@ bool parser_parse(Parser *parser, AstRoot *out) {
                              parser->origin.src.items, parser->origin.name);
                 return false;
             }
-            if (!parser_expect_and_skip(parser, TT_OPEN_CURLY)) {
-                log_diagnostic(LL_ERROR, "Expected a `{` to begin a function body");
-                report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
-                             parser->origin.src.items, parser->origin.name);
-                return false;
-            }
-            while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_CLOSE_CURLY) {
-                AstStatement st = {0};
-                if (!parser_parse_statement(parser, &st)) return false;
-                da_push(&f.body, st);
-            }
-            if (parser_is_empty(parser)) {
-                log_diagnostic(LL_ERROR, "Expected a `}` to close a function body");
-                report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
-                             parser->origin.src.items, parser->origin.name);
-                return false;
-            }
-            parser_pop(parser);
+            if (!parser_parse_block(parser, &f.body)) return false;
             da_push(&out->fs, f);
         }
     }
+
+    return true;
+}
+
+bool parser_parse_block(Parser *parser, AstBlock *out) {
+    if (!parser_expect_and_skip(parser, TT_OPEN_CURLY)) {
+        log_diagnostic(LL_ERROR, "Expected a `{` to begin a block");
+        report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                     parser->origin.src.items, parser->origin.name);
+        return false;
+    }
+    while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_CLOSE_CURLY) {
+        AstStatement st = {0};
+        if (!parser_parse_statement(parser, &st)) return false;
+        da_push(out, st);
+    }
+    if (parser_is_empty(parser)) {
+        log_diagnostic(LL_ERROR, "Expected a `}` to end a block");
+        report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                     parser->origin.src.items, parser->origin.name);
+        return false;
+    }
+    // we can ignore this return value, since the other only condition has been checked
+    parser_expect_and_skip(parser, TT_CLOSE_CURLY);
 
     return true;
 }
@@ -238,6 +245,8 @@ bool parser_parse_term(Parser *parser, AstExpression *out) {
     return true;
 }
 
+// statements that require a semicolon break out of the switch
+// those that don't return true, but they have to setup the length of themselves
 bool parser_parse_statement(Parser *parser, AstStatement *out) {
     out->begin = parser->tokens.items[0].begin;
     Token t = parser_pop(parser);
@@ -285,6 +294,15 @@ bool parser_parse_statement(Parser *parser, AstStatement *out) {
             if (!parser_parse_expr(parser, &out->let.value)) return false;
             out->type = AST_LET;
             break;
+        }
+        case KT_IF: {
+            AstExpression cond = {0};
+            if (!parser_parse_expr(parser, &cond)) return false;
+            out->if_st.cond = cond;
+            if (!parser_parse_block(parser, &out->if_st.block)) return false;
+            out->len = (parser->last_token.begin + parser->last_token.len) - out->begin;
+            out->type = AST_IF;
+            return true;
         }
         case KT_DEF:
             log_message(LL_INFO, "Nested functions aren't supported");

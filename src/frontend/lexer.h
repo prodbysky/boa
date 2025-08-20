@@ -37,6 +37,7 @@ typedef enum {
     KT_RETURN,
     KT_LET,
     KT_DEF,
+    KT_IF,
 } KeywordType;
 
 typedef struct {

@@ -40,7 +40,6 @@ bool nasm_x86_64_linux_generate_file(FILE *sink, const SSAModule *mod) {
     fprintf(sink, "  mov rdi, rsi\n");
     fprintf(sink, "  syscall\n");
 
-
     for (size_t i = 0; i < mod->functions.count; i++) { generate_function(sink, &mod->functions.items[i]); }
 
     return true;
@@ -103,8 +102,19 @@ static bool generate_statement(FILE *sink, const SSAStatement *st) {
         emit_call(sink, st);
         return true;
     }
-    default: TODO();
+    case SSAST_LABEL: {
+        fprintf(sink, "  .l%zu:\n", st->label);
+        return true;
     }
+    case SSAST_JZ: {
+        move_value_into_register(sink, "rax", &st->jz.cond);
+        fprintf(sink, "  cmp rax, 0\n");
+        fprintf(sink, "  jz .l%zu\n", st->jz.to);
+        return true;
+    }
+    }
+    UNREACHABLE("oh no");
+    return false;
 }
 
 static void emit_return_some(FILE *sink, const SSAStatement *ret) {
@@ -178,7 +188,7 @@ static void emit_call(FILE *sink, const SSAStatement *st) {
     }
 
     size_t extra = st->call.args.count > 6 ? st->call.args.count - 6 : 0;
-    for (size_t i = st->call.args.count; i -->6;) {
+    for (size_t i = st->call.args.count; i-- > 6;) {
         fprintf(sink, "  push ");
         value_asm_repr(sink, &st->call.args.items[i]);
         fprintf(sink, "\n");
@@ -188,7 +198,6 @@ static void emit_call(FILE *sink, const SSAStatement *st) {
         // align to 16 bytes
         fprintf(sink, "  sub rsp, 8\n");
     }
-
 
     fprintf(sink, "  call " STR_FMT "\n", STR_ARG(st->call.name));
     if (st->call.returns) {

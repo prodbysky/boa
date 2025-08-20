@@ -31,6 +31,8 @@ typedef enum {
     SSAST_DIV,
     SSAST_ASSIGN,
     SSAST_CALL,
+    SSAST_LABEL,
+    SSAST_JZ,
 } SSAStatementType;
 
 typedef struct {
@@ -60,6 +62,11 @@ typedef struct {
             SSAValue return_v;
             SSAInputArgs args;
         } call;
+        struct {
+            SSAValue cond;
+            uint64_t to;
+        } jz;
+        uint64_t label;
     };
 } SSAStatement;
 
@@ -80,15 +87,22 @@ typedef struct {
     size_t capacity;
 } SSANameToValue;
 
-bool get_if_known_variable(SSANameToValue *vals, StringView view, NameValuePair **out);
+typedef struct {
+    SSANameToValue* items;
+    size_t count;
+    size_t capacity;
+} SSABadBoyStack;
+
+bool get_if_known_variable(SSABadBoyStack *vals, StringView view, NameValuePair **out);
+bool add_variable(SSABadBoyStack* stack, NameValuePair pair);
 
 typedef struct {
     StringView name;
     SSAFunctionBody body;
     size_t max_temps;
     size_t arg_count;
-    // TODO: Stack of these bad boys will get us very far
-    SSANameToValue variables;
+    SSABadBoyStack scopes;
+    uint64_t label_count;
 } SSAFunction;
 
 typedef struct {
@@ -106,17 +120,3 @@ bool generate_ssa_statement(const AstRoot* ast, const AstStatement* st, SSAFunct
 bool generate_ssa_expr(const AstRoot* ast, const AstExpression* expr, SSAValue* out_value, SSAFunction* out);
 
 #endif
-
-/*
-    callee(one, two, three) 
-        %0 == 1
-        %1 == 1
-        %2 == 1
-
-    and then insert names with their locations in the NameIndexlook up
-    one == %1
-    then the codegens just move the temps from the standard locations of the arguments
-    to the stack :)
-
-    callee(1, 2, 3)
-*/

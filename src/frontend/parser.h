@@ -15,12 +15,18 @@ typedef struct {
 
 typedef enum { AET_PRIMARY, AET_BINARY, AET_IDENT, AET_FUNCTION_CALL } AstExpressionType;
 
-
 typedef struct AstExpression AstExpression;
+typedef struct AstStatement AstStatement;
+
+typedef struct {
+    AstStatement *items;
+    size_t count;
+    size_t capacity;
+} AstBlock;
 
 // Where a function is called
 typedef struct {
-    AstExpression* items;
+    AstExpression *items;
     size_t count;
     size_t capacity;
 } FunctionArgsIn;
@@ -28,7 +34,7 @@ typedef struct {
 // Where a function is defined
 // TODO: Types (since all things are just u64 now)
 typedef struct {
-    StringView* items;
+    StringView *items;
     size_t count;
     size_t capacity;
 } FunctionArgsOut;
@@ -52,10 +58,15 @@ typedef struct AstExpression {
     };
 } AstExpression;
 
+typedef enum {
+    AST_RETURN,
+    AST_LET,
+    AST_ASSIGN,
+    AST_CALL,
+    AST_IF,
+} AstStatementType;
 
-typedef enum { AST_RETURN, AST_LET, AST_ASSIGN, AST_CALL} AstStatementType;
-
-typedef struct {
+struct AstStatement{
     AstStatementType type;
     const char *begin;
     ptrdiff_t len;
@@ -72,8 +83,13 @@ typedef struct {
             StringView name;
             FunctionArgsIn args;
         } call;
+        struct {
+            AstExpression cond;
+            AstBlock block;
+        } if_st;
     };
-} AstStatement;
+};
+
 
 typedef struct {
     AstStatement *items;
@@ -82,15 +98,10 @@ typedef struct {
     size_t capacity;
 } AstTree;
 
-typedef struct {
-    AstStatement *items;
-    size_t count;
-    size_t capacity;
-} AstFunctionBody;
 
 typedef struct {
     StringView name;
-    AstFunctionBody body;
+    AstBlock body;
     FunctionArgsOut args;
 } AstFunction;
 
@@ -132,5 +143,6 @@ bool parser_parse_term(Parser *parser, AstExpression *out);
 bool parser_parse_primary(Parser *parser, AstExpression *out);
 
 bool parser_parse_statement(Parser *parser, AstStatement *out);
+bool parser_parse_block(Parser* parser, AstBlock* out);
 
 #endif
