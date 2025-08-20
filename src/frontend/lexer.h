@@ -39,6 +39,7 @@ typedef enum {
     KT_DEF,
     KT_IF,
     KT_WHILE,
+    KT_ASM,
 } KeywordType;
 
 typedef struct {
