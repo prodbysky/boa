@@ -43,14 +43,9 @@ bool parser_parse(Parser *parser, AstRoot *out) {
 
                 Token next = parser_peek(parser, 0);
                 if (next.type == TT_CLOSE_PAREN) {
-                    // End of argument list - this is fine, let the outer loop handle the closing paren
                     break;
                 } else if (next.type == TT_COMMA) {
-                    // More arguments expected
-                    parser_pop(parser); // consume the comma
-                    // Continue to next iteration to parse the next argument
-
-                    // Check that there's actually another argument after the comma
+                    parser_pop(parser); 
                     if (parser_is_empty(parser) || parser_peek(parser, 0).type == TT_CLOSE_PAREN) {
                         log_diagnostic(LL_ERROR, "Expected argument name after comma");
                         report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
