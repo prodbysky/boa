@@ -1,8 +1,8 @@
 #include "lexer.h"
 #include "../log.h"
 #include "../util.h"
-#include <ctype.h>
-#include <stdio.h>
+#include <ctype.h> 
+#include <stdio.h> 
 #include <stdlib.h>
 #include <string.h>
 
@@ -12,6 +12,12 @@ static const OperatorType char_to_op[] = {
     ['*'] = OT_MULT,
     ['/'] = OT_DIV,
 };
+
+static void lex_single_char(Lexer *lexer, Tokens *out, TokenType new) {
+    Token t = {.len = 1, .begin = lexer->file.src.items, .type = new};
+    da_push(out, t);
+    lexer_consume(lexer);
+}
 
 bool lexer_run(Lexer *lexer, Tokens *out) {
     ASSERT(lexer, "Passed null lexer");
@@ -49,62 +55,14 @@ bool lexer_run(Lexer *lexer, Tokens *out) {
             lexer_consume(lexer);
             continue;
         }
-        case ';': {
-            Token t = {0};
-            t.type = TT_SEMICOLON;
-            t.len = 1;
-            t.begin = lexer->file.src.items;
-            da_push(out, t);
-            lexer_consume(lexer);
-            continue;
+        case ';': lex_single_char(lexer, out, TT_SEMICOLON); continue;
+        case '=': lex_single_char(lexer, out, TT_ASSIGN); continue;
+        case '{': lex_single_char(lexer, out, TT_OPEN_CURLY); continue;
+        case '}': lex_single_char(lexer, out, TT_CLOSE_CURLY); continue;
+        case '(': lex_single_char(lexer, out, TT_OPEN_PAREN); continue;
+        case ')': lex_single_char(lexer, out, TT_CLOSE_PAREN); continue;
+        case ',': lex_single_char(lexer, out, TT_COMMA); continue;
         }
-        case '=': {
-            Token t = {0};
-            t.type = TT_ASSIGN;
-            t.len = 1;
-            t.begin = lexer->file.src.items;
-            da_push(out, t);
-            lexer_consume(lexer);
-            continue;
-        }
-        case '{': {
-            Token t = {0};
-            t.type = TT_OPEN_CURLY;
-            t.len = 1;
-            t.begin = lexer->file.src.items;
-            da_push(out, t);
-            lexer_consume(lexer);
-            continue;
-        }
-        case '}': {
-            Token t = {0};
-            t.type = TT_CLOSE_CURLY;
-            t.len = 1;
-            t.begin = lexer->file.src.items;
-            da_push(out, t);
-            lexer_consume(lexer);
-            continue;
-        }
-        case '(': {
-            Token t = {0};
-            t.type = TT_OPEN_PAREN;
-            t.len = 1;
-            t.begin = lexer->file.src.items;
-            da_push(out, t);
-            lexer_consume(lexer);
-            continue;
-        }
-        case ')': {
-            Token t = {0};
-            t.type = TT_CLOSE_PAREN;
-            t.len = 1;
-            t.begin = lexer->file.src.items;
-            da_push(out, t);
-            lexer_consume(lexer);
-            continue;
-        }
-        }
-
         TODO();
     }
 
@@ -116,7 +74,8 @@ bool lexer_lex_ident_or_keyword(Lexer *lexer, Token *out) {
     ASSERT(lexer_peek(lexer, 0) == '_' || isalpha(lexer_peek(lexer, 0)), "The caller ensures this condition");
     const char *begin = lexer->file.src.items;
 
-    while (!lexer_is_empty(lexer) && (lexer_peek(lexer, 0) == '_' || isalpha(lexer_peek(lexer, 0)) || isdigit(lexer_peek(lexer, 0))))
+    while (!lexer_is_empty(lexer) &&
+           (lexer_peek(lexer, 0) == '_' || isalpha(lexer_peek(lexer, 0)) || isdigit(lexer_peek(lexer, 0))))
         lexer_consume(lexer);
 
     const char *end = lexer->file.src.items;
@@ -139,18 +98,12 @@ bool lexer_lex_ident_or_keyword(Lexer *lexer, Token *out) {
     return true;
 }
 
-// TODO: Make this "better"
-bool lexer_ident_is_keyword(const char *begin, ptrdiff_t len) {
-    if (strncmp(begin, "return", len) == 0) return true;
-    if (strncmp(begin, "let", len) == 0) return true;
-    if (strncmp(begin, "def", len) == 0) return true;
-    return false;
-}
+bool lexer_ident_is_keyword(const char *begin, ptrdiff_t len) { return lexer_keyword(begin, len) != KT_NO; }
 
 KeywordType lexer_keyword(const char *begin, ptrdiff_t len) {
-    if (strncmp(begin, "return", len) == 0) return KT_RETURN;
-    if (strncmp(begin, "let", len) == 0) return KT_LET;
-    if (strncmp(begin, "def", len) == 0) return KT_DEF;
+    if (len == 6 && strncmp(begin, "return", len) == 0) return KT_RETURN;
+    if (len == 3 && strncmp(begin, "let", len) == 0) return KT_LET;
+    if (len == 3 && strncmp(begin, "def", len) == 0) return KT_DEF;
     return KT_NO;
 }
 

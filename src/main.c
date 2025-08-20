@@ -75,13 +75,6 @@ int main(int argc, char **argv) {
         goto defer;
     }
 
-    if (!c.dont_optimize) {
-        if (!optimize_ssa_ir(&mod)) {
-            result = 1;
-            goto defer;
-        }
-    }
-
     t->generate(c.output_name, &mod);
     t->assemble(c.output_name);
     t->link(c.output_name);

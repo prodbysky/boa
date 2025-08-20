@@ -19,14 +19,52 @@ bool parser_parse(Parser *parser, AstRoot *out) {
                              parser->origin.src.items, parser->origin.name);
                 return false;
             }
+            AstFunction f = {0};
+            f.name = name;
             if (!parser_expect_and_skip(parser, TT_OPEN_PAREN)) {
                 log_diagnostic(LL_ERROR, "Expected an `(` symbol here to denote an argument list");
                 report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
                              parser->origin.src.items, parser->origin.name);
                 return false;
             }
+            while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_CLOSE_PAREN) {
+                StringView arg_name = {0};
+                if (!parser_expect_ident(parser, &arg_name)) {
+                    log_diagnostic(LL_ERROR, "Expected an argument name here");
+                    report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                                 parser->origin.src.items, parser->origin.name);
+                    return false;
+                }
+                da_push(&f.args, arg_name);
+                if (parser_is_empty(parser)) {
+                    log_diagnostic(LL_ERROR, "Unexpected end of input in argument list");
+                    return false;
+                }
+
+                Token next = parser_peek(parser, 0);
+                if (next.type == TT_CLOSE_PAREN) {
+                    // End of argument list - this is fine, let the outer loop handle the closing paren
+                    break;
+                } else if (next.type == TT_COMMA) {
+                    // More arguments expected
+                    parser_pop(parser); // consume the comma
+                    // Continue to next iteration to parse the next argument
+
+                    // Check that there's actually another argument after the comma
+                    if (parser_is_empty(parser) || parser_peek(parser, 0).type == TT_CLOSE_PAREN) {
+                        log_diagnostic(LL_ERROR, "Expected argument name after comma");
+                        report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                                     parser->origin.src.items, parser->origin.name);
+                        return false;
+                    }
+                } else {
+                    log_diagnostic(LL_ERROR, "Expected comma or closing parenthesis in argument list");
+                    report_error(next.begin, next.begin + next.len, parser->origin.src.items, parser->origin.name);
+                    return false;
+                }
+            }
             if (!parser_expect_and_skip(parser, TT_CLOSE_PAREN)) {
-                log_diagnostic(LL_ERROR, "Boa does not yet support function arguments");
+                log_diagnostic(LL_ERROR, "Argument list wasn't terminated with a `)`");
                 report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
                              parser->origin.src.items, parser->origin.name);
                 return false;
@@ -37,8 +75,6 @@ bool parser_parse(Parser *parser, AstRoot *out) {
                              parser->origin.src.items, parser->origin.name);
                 return false;
             }
-            AstFunction f = {0};
-            f.name = name;
             while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_CLOSE_CURLY) {
                 AstStatement st = {0};
                 if (!parser_parse_statement(parser, &st)) return false;
@@ -112,7 +148,27 @@ bool parser_parse_primary(Parser *parser, AstExpression *out) {
         return true;
     }
     case TT_IDENT: {
-        // TODO: Function call parsing as a primary expression
+        if (!parser_is_empty(parser) && parser_peek(parser, 0).type == TT_OPEN_PAREN) {
+            out->type = AET_FUNCTION_CALL;
+            parser_pop(parser);
+            Token closing_paren = parser_peek(parser, 0);
+            while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_CLOSE_PAREN) {
+                AstExpression arg = {0};
+                if (!parser_parse_expr(parser, &arg)) return false;
+                da_push(&out->func_call.args, arg);
+                if (!parser_expect_and_skip(parser, TT_COMMA)) break;
+            }
+            if (!parser_expect_and_skip(parser, TT_CLOSE_PAREN)) {
+                log_diagnostic(LL_ERROR, "Argument list wasn't terminated with a `)`");
+                report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                             parser->origin.src.items, parser->origin.name);
+                return false;
+            }
+            out->len = closing_paren.begin + 1 - t.begin;
+            out->func_call.name = t.identifier;
+            out->begin = t.begin;
+            return true;
+        }
         out->type = AET_IDENT;
         out->len = t.identifier.count;
         out->ident = t.identifier;
@@ -120,6 +176,7 @@ bool parser_parse_primary(Parser *parser, AstExpression *out) {
         return true;
     }
     default: {
+
         log_diagnostic(LL_ERROR, "Expected an expression to be here");
         report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
                      parser->origin.src.items, parser->origin.name);
@@ -234,7 +291,10 @@ bool parser_parse_statement(Parser *parser, AstStatement *out) {
             out->type = AST_LET;
             break;
         }
-        case KT_DEF: TODO(); break;
+        case KT_DEF:
+            log_message(LL_INFO, "Nested functions aren't supported");
+            TODO();
+            break;
         }
     } else if (t.type == TT_IDENT) {
         switch (parser_peek(parser, 0).type) {
@@ -243,6 +303,24 @@ bool parser_parse_statement(Parser *parser, AstStatement *out) {
             out->assign.name = t.identifier;
             parser_pop(parser);
             if (!parser_parse_expr(parser, &out->assign.value)) return false;
+            break;
+        }
+        case TT_OPEN_PAREN: {
+            out->type = AST_CALL;
+            out->call.name = t.identifier;
+            parser_pop(parser);
+            while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_CLOSE_PAREN) {
+                AstExpression arg = {0};
+                if (!parser_parse_expr(parser, &arg)) { return false; }
+                da_push(&out->call.args, arg);
+                if (!parser_expect_and_skip(parser, TT_COMMA)) { break; }
+            }
+            if (!parser_expect_and_skip(parser, TT_CLOSE_PAREN)) {
+                log_diagnostic(LL_ERROR, "Argument list wasn't terminated with a `)`");
+                report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                             parser->origin.src.items, parser->origin.name);
+                return false;
+            }
             break;
         }
         default: {

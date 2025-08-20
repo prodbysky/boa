@@ -13,6 +13,7 @@ static void emit_sub(FILE *sink, const SSAStatement *st);
 static void emit_imul(FILE *sink, const SSAStatement *st);
 static void emit_div(FILE *sink, const SSAStatement *st);
 static void emit_assign(FILE *sink, const SSAStatement *st);
+static void emit_call(FILE *sink, const SSAStatement *st);
 
 static void emit_add_reg_value(FILE *sink, const char *reg, const SSAValue *value);
 static void emit_sub_reg_value(FILE *sink, const char *reg, const SSAValue *value);
@@ -21,7 +22,6 @@ static void move_value_into_register(FILE *sink, const char *reg, const SSAValue
 static void move_value_into_value(FILE *sink, const SSAValue *from, const SSAValue *into);
 
 static void value_asm_repr(FILE *sink, const SSAValue *value);
-
 
 static size_t f_count = 0;
 
@@ -36,9 +36,7 @@ bool mingw_x86_64_windows_generate_file(FILE *sink, const SSAModule *mod) {
     fprintf(sink, "   sub rsp, 40\n");
     fprintf(sink, "   call ExitProcess\n");
 
-    for (size_t i = 0; i < mod->functions.count; i++) {
-        generate_function(sink, &mod->functions.items[i]);
-    }
+    for (size_t i = 0; i < mod->functions.count; i++) { generate_function(sink, &mod->functions.items[i]); }
 
     return true;
 }
@@ -85,6 +83,10 @@ static bool generate_statement(FILE *sink, const SSAStatement *st) {
     }
     case SSAST_ASSIGN: {
         emit_assign(sink, st);
+        return true;
+    }
+    case SSAST_CALL: {
+        emit_call(sink, st);
         return true;
     }
     default: TODO();
@@ -152,6 +154,16 @@ static void emit_assign(FILE *sink, const SSAStatement *st) {
 
     SSAValue temp_value = {.temp = st->assign.place, .type = SSAVT_TEMP};
     move_value_into_value(sink, &st->assign.value, &temp_value);
+}
+
+static void emit_call(FILE *sink, const SSAStatement *st) {
+    ASSERT(st->type == SSAST_CALL, "This function should only be called when the type of the statement is SSAST_CALL");
+    fprintf(sink, "  call " STR_FMT "\n", STR_ARG(st->call.name));
+    if (st->call.returns) {
+        fprintf(sink, "  mov ");
+        value_asm_repr(sink, &st->call.return_v);
+        fprintf(sink, ", rax\n");
+    }
 }
 
 static void move_value_into_value(FILE *sink, const SSAValue *from, const SSAValue *into) {
