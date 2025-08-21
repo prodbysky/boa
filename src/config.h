@@ -1,6 +1,7 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
 
+#include "arena.h"
 typedef struct {
     char *exe_name;
     char *input_name;
@@ -10,7 +11,7 @@ typedef struct {
     bool keep_build_artifacts;
 } Config;
 
-bool parse_config(Config *conf, int argc, char **argv);
+bool parse_config(Config *conf, int argc, char **argv, Arena* arena);
 
 void usage(char *program_name);
 

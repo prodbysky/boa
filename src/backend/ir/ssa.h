@@ -101,7 +101,7 @@ typedef struct {
 } SSABadBoyStack;
 
 bool get_if_known_variable(SSABadBoyStack *vals, StringView view, NameValuePair **out);
-bool add_variable(SSABadBoyStack* stack, NameValuePair pair);
+bool add_variable(SSABadBoyStack* stack, NameValuePair pair, Arena* arena);
 
 typedef struct {
     StringView name;
@@ -129,8 +129,8 @@ typedef struct {
     SSAStrings strings;
 } SSAModule;
 
-bool generate_ssa_module(const AstRoot* ast, SSAModule* out);
-bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunction *out, SSAStrings* strs);
-bool generate_ssa_expr(const AstRoot *tree, const AstExpression *expr, SSAValue *out_value, SSAFunction *out, SSAStrings* strs);
+bool generate_ssa_module(const AstRoot *ast, SSAModule *out, Arena* arena);
+bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunction *out, SSAStrings* strs, Arena* arena);
+bool generate_ssa_expr(const AstRoot *tree, const AstExpression *expr, SSAValue *out_value, SSAFunction *out, SSAStrings* strs, Arena* arena);
 
 #endif

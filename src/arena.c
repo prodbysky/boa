@@ -11,7 +11,7 @@ Arena arena_new(size_t size) {
 void *arena_alloc(Arena *arena, size_t size) {
     ASSERT(arena, "House keeping");
     ASSERT(arena->buffer, "House keeping");
-    if (arena->used + size >= arena->cap) return NULL;
+    ASSERT(arena->used + size < arena->cap, "Arena overflow");
     void* buf = &arena->buffer[arena->used];
     arena->used += size;
     return buf;

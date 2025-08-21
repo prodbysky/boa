@@ -35,7 +35,7 @@ bool parser_parse(Parser *parser, AstRoot *out) {
                                  parser->origin.src.items, parser->origin.name);
                     return false;
                 }
-                da_push(&f.args, arg_name);
+                da_push(&f.args, arg_name, parser->arena);
                 if (parser_is_empty(parser)) {
                     log_diagnostic(LL_ERROR, "Unexpected end of input in argument list");
                     return false;
@@ -65,7 +65,7 @@ bool parser_parse(Parser *parser, AstRoot *out) {
                 return false;
             }
             if (!parser_parse_block(parser, &f.body)) return false;
-            da_push(&out->fs, f);
+            da_push(&out->fs, f, parser->arena);
         }
     }
 
@@ -82,7 +82,7 @@ bool parser_parse_block(Parser *parser, AstBlock *out) {
     while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_CLOSE_CURLY) {
         AstStatement st = {0};
         if (!parser_parse_statement(parser, &st)) return false;
-        da_push(out, st);
+        da_push(out, st, parser->arena);
     }
     if (parser_is_empty(parser)) {
         log_diagnostic(LL_ERROR, "Expected a `}` to end a block");
@@ -157,7 +157,7 @@ bool parser_parse_primary(Parser *parser, AstExpression *out) {
             while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_CLOSE_PAREN) {
                 AstExpression arg = {0};
                 if (!parser_parse_expr(parser, &arg)) return false;
-                da_push(&out->func_call.args, arg);
+                da_push(&out->func_call.args, arg, parser->arena);
                 if (!parser_expect_and_skip(parser, TT_COMMA)) break;
             }
             if (!parser_expect_and_skip(parser, TT_CLOSE_PAREN)) {
@@ -364,7 +364,7 @@ bool parser_parse_statement(Parser *parser, AstStatement *out) {
             while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_CLOSE_PAREN) {
                 AstExpression arg = {0};
                 if (!parser_parse_expr(parser, &arg)) { return false; }
-                da_push(&out->call.args, arg);
+                da_push(&out->call.args, arg, parser->arena);
                 if (!parser_expect_and_skip(parser, TT_COMMA)) { break; }
             }
             if (!parser_expect_and_skip(parser, TT_CLOSE_PAREN)) {

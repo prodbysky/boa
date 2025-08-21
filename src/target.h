@@ -8,10 +8,10 @@ typedef enum {
 typedef struct {
     const char *name;
     TargetKind tk;
-    bool (*generate)(char *root_path, const SSAModule *mod);
-    bool (*assemble)(char *root_path);
-    bool (*link)(char *root_path);
-    void (*cleanup)(char *root_path);
+    bool (*generate)(char *root_path, const SSAModule *mod, Arena* arena);
+    bool (*assemble)(char *root_path, Arena* arena);
+    bool (*link)(char *root_path, Arena* arena);
+    void (*cleanup)(char *root_path, Arena* arena);
 } Target;
 
 bool find_target(Target** out, const char* name);

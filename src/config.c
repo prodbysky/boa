@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-bool parse_config(Config *conf, int argc, char **argv) {
+bool parse_config(Config *conf, int argc, char **argv, Arena* arena) {
     conf->exe_name = *argv;
     argc--;
     argv++;
@@ -75,7 +75,7 @@ bool parse_config(Config *conf, int argc, char **argv) {
 
     if (conf->output_name == NULL) {
         size_t len = strlen(conf->input_name) - 3;
-        conf->output_name = malloc(sizeof(char) * (len + 1));
+        conf->output_name = arena_alloc(arena, sizeof(char) * (len + 1));
         conf->output_name[len] = 0;
         conf->should_free_output_name = true;
         snprintf(conf->output_name, len, "%s", conf->input_name);

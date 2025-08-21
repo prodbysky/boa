@@ -15,7 +15,7 @@ static const OperatorType char_to_op[] = {
 
 static void lex_single_char(Lexer *lexer, Tokens *out, TokenType new) {
     Token t = {.len = 1, .begin = lexer->file.src.items, .type = new};
-    da_push(out, t);
+    da_push(out, t, lexer->arena);
     lexer_consume(lexer);
 }
 
@@ -29,14 +29,14 @@ bool lexer_run(Lexer *lexer, Tokens *out) {
         if (isdigit(lexer_peek(lexer, 0))) {
             Token t = {0};
             if (!lexer_lex_number(lexer, &t)) return false;
-            da_push(out, t);
+            da_push(out, t, lexer->arena);
             continue;
         }
 
         if (lexer_peek(lexer, 0) == '_' || isalpha(lexer_peek(lexer, 0))) {
             Token t = {0};
             if (!lexer_lex_ident_or_keyword(lexer, &t)) return false;
-            da_push(out, t);
+            da_push(out, t, lexer->arena);
             continue;
         }
 
@@ -51,7 +51,7 @@ bool lexer_run(Lexer *lexer, Tokens *out) {
             t.len = 1;
             t.begin = lexer->file.src.items;
             t.operator= char_to_op[(size_t)lexer_peek(lexer, 0)];
-            da_push(out, t);
+            da_push(out, t, lexer->arena);
             lexer_consume(lexer);
             continue;
         }
