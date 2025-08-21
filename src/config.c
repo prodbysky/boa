@@ -7,10 +7,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef __unix__
+const TargetKind default_target = TK_Linux_x86_64_NASM;
+#elif defined(_WIN32)
+const TargetKind default_target = TK_Win_x86_64_MINGW;
+#endif
+
 bool parse_config(Config *conf, int argc, char **argv, Arena* arena) {
     conf->exe_name = *argv;
     argc--;
     argv++;
+    find_target(&conf->target, target_enum_to_str(default_target));
 
     while (argc > 0) {
         if (strcmp(*argv, "-o") == 0) {
@@ -49,9 +56,7 @@ bool parse_config(Config *conf, int argc, char **argv, Arena* arena) {
                 log_diagnostic(LL_ERROR, "Unknown target name %s (run %s -list-targets)", *argv, conf->exe_name);
                 return false;
             } else {
-                conf->target = *argv;
-                argc--;
-                argv++;
+                conf->target = t;
             }
         } else {
             if (**argv == '-') {
@@ -80,6 +85,7 @@ bool parse_config(Config *conf, int argc, char **argv, Arena* arena) {
         conf->should_free_output_name = true;
         snprintf(conf->output_name, len, "%s", conf->input_name);
     }
+
 
     return true;
 }

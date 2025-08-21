@@ -9,29 +9,15 @@
 #include "backend/ir/ssa.h"
 #include "config.h"
 #include "target.h"
-#include <stdlib.h>
 
-#ifdef __unix__
-const TargetKind default_target = TK_Linux_x86_64_NASM;
-#elif defined(_WIN32)
-const TargetKind default_target = TK_Win_x86_64_MINGW;
-#endif
 
 int main(int argc, char **argv) {
     int result = 0;
-    Arena arena = arena_new(1024 * 1024 * 10);
+    Arena arena = arena_new(1024 * 1024);
     Config c = {0};
 
     if (!parse_config(&c, argc, argv, &arena)) {
         usage(c.exe_name);
-        result = 1;
-        goto defer;
-    }
-
-    Target *t = NULL;
-    const char *target_name = (c.target == NULL) ? target_enum_to_str(default_target) : c.target;
-    if (!find_target(&t, target_name)) {
-        log_diagnostic(LL_ERROR, "Unknown target %s", c.target ? c.target : "(default)");
         result = 1;
         goto defer;
     }
@@ -49,7 +35,6 @@ int main(int argc, char **argv) {
         result = 1;
         goto defer;
     }
-
 
     Parser p = {
         .arena = &arena,
@@ -73,10 +58,10 @@ int main(int argc, char **argv) {
         goto defer;
     }
 
-    t->generate(c.output_name, &mod, &arena);
-    t->assemble(c.output_name, &arena);
-    t->link(c.output_name, &arena);
-    if (!c.keep_build_artifacts) t->cleanup(c.output_name, &arena);
+    c.target->generate(c.output_name, &mod, &arena);
+    c.target->assemble(c.output_name, &arena);
+    c.target->link(c.output_name, &arena);
+    if (!c.keep_build_artifacts) c.target->cleanup(c.output_name, &arena);
 
 defer:
     arena_free(&arena);

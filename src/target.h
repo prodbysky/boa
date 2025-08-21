@@ -1,3 +1,5 @@
+#ifndef TARGET_H_
+#define TARGET_H_
 #include "backend/ir/ssa.h"
 
 typedef enum {
@@ -17,4 +19,4 @@ typedef struct {
 bool find_target(Target** out, const char* name);
 const char* target_enum_to_str(TargetKind kind);
 
-
+#endif
