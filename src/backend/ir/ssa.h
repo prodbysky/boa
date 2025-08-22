@@ -9,6 +9,7 @@
 typedef enum {
     SSAVT_CONST,
     SSAVT_TEMP,
+    SSAVT_ARG,
     SSAVT_STRING,
 } SSAValueType;
 
@@ -22,7 +23,7 @@ typedef struct {
         TempValueIndex temp;
         // strings will be in the data section like this
         // str%zu... db ..., 0
-        uint64_t string_index;
+        uint64_t string_index, arg_index;
     };
 } SSAValue;
 
@@ -59,7 +60,7 @@ typedef struct {
             SSAValue result;
         } binop;
         struct {
-            TempValueIndex place;
+            SSAValue place;
             SSAValue value;
         } assign;
         struct {
@@ -85,7 +86,7 @@ typedef struct {
 
 typedef struct {
     StringView name;
-    TempValueIndex index;
+    SSAValue value;
 } NameValuePair;
 
 typedef struct {
@@ -129,7 +130,10 @@ typedef struct {
     SSAStrings strings;
 } SSAModule;
 
+void dump_ir(const SSAModule* mod);
+
 bool generate_ssa_module(const AstRoot *ast, SSAModule *out, Arena* arena);
+bool generate_ssa_function(SSAFunction* out, const AstFunction* ast_func, Arena* arena, SSAStrings* strs, const AstRoot* tree);
 bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunction *out, SSAStrings* strs, Arena* arena);
 bool generate_ssa_expr(const AstRoot *tree, const AstExpression *expr, SSAValue *out_value, SSAFunction *out, SSAStrings* strs, Arena* arena);
 

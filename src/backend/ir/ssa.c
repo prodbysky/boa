@@ -4,26 +4,37 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <wchar.h>
 
-bool generate_ssa_module(const AstRoot *ast, SSAModule *out, Arena* arena) {
+bool generate_ssa_module(const AstRoot *ast, SSAModule *out, Arena *arena) {
     ASSERT(ast, "Sanity check");
     ASSERT(out, "Sanity check");
+
     for (size_t i = 0; i < ast->fs.count; i++) {
         AstFunction *f = &ast->fs.items[i];
         SSAFunction func = {0};
-        func.arg_count = f->args.count;
-        func.max_temps = f->args.count;
-        da_push(&func.scopes, (SSANameToValue){}, arena);
-        for (size_t i = 0; i < f->args.count; i++) {
-            add_variable(&func.scopes, (NameValuePair){.name = f->args.items[i], .index = i}, arena);
-        }
-        func.name = ast->fs.items[i].name;
-        for (size_t i = 0; i < f->body.count; i++) {
-            if (!generate_ssa_statement(ast, &f->body.items[i], &func, &out->strings, arena)) return false;
-        }
+        if (!generate_ssa_function(&func, f, arena, &out->strings, ast)) return false;
         da_push(&out->functions, func, arena);
     }
 
+    return true;
+}
+
+bool generate_ssa_function(SSAFunction *out, const AstFunction *ast_func, Arena *arena, SSAStrings *strs,
+                           const AstRoot *tree) {
+
+    out->arg_count = ast_func->args.count;
+    da_push(&out->scopes, (SSANameToValue){}, arena);
+    for (size_t i = 0; i < ast_func->args.count; i++) {
+        add_variable(
+            &out->scopes,
+            (NameValuePair){.name = ast_func->args.items[i], .value = (SSAValue){.type = SSAVT_ARG, .arg_index = i}},
+            arena);
+    }
+    out->name = ast_func->name;
+    for (size_t i = 0; i < ast_func->body.count; i++) {
+        if (!generate_ssa_statement(tree, &ast_func->body.items[i], out, strs, arena)) return false;
+    }
     return true;
 }
 
@@ -43,7 +54,7 @@ bool get_if_known_variable(SSABadBoyStack *vals, StringView view, NameValuePair 
     return false;
 }
 
-bool add_variable(SSABadBoyStack* stack, NameValuePair pair, Arena* arena) {
+bool add_variable(SSABadBoyStack *stack, NameValuePair pair, Arena *arena) {
     ASSERT(stack->count > 0,
            "There should always be a scope in this struct if not that means someone popped an extra stack");
     SSANameToValue *scope = &stack->items[stack->count - 1];
@@ -51,7 +62,8 @@ bool add_variable(SSABadBoyStack* stack, NameValuePair pair, Arena* arena) {
     return true;
 }
 
-bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunction *out, SSAStrings* strs, Arena* arena) {
+bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunction *out, SSAStrings *strs,
+                            Arena *arena) {
     ASSERT(st, "Sanity check");
     switch (st->type) {
     case AST_RETURN: {
@@ -70,10 +82,10 @@ bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunc
         SSAValue variable_value = {0};
         if (!generate_ssa_expr(tree, &st->let.value, &variable_value, out, strs, arena)) return false;
         TempValueIndex place = out->max_temps++;
-        NameValuePair pair = {.name = st->let.name, .index = place};
+        NameValuePair pair = {.name = st->let.name, .value = {.type = SSAVT_TEMP, .temp = place}};
         SSAStatement st = {
             .type = SSAST_ASSIGN,
-            .assign = {.place = place, .value = variable_value},
+            .assign = {.place = (SSAValue){.type = SSAVT_TEMP, .temp = place}, .value = variable_value},
         };
         da_push(&out->body, st, arena);
         add_variable(&out->scopes, pair, arena);
@@ -90,7 +102,7 @@ bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunc
         }
         SSAStatement st = {
             .type = SSAST_ASSIGN,
-            .assign = {.place = p->index, .value = variable_value_new},
+            .assign = {.place = p->value, .value = variable_value_new},
         };
         da_push(&out->body, st, arena);
         return true;
@@ -162,7 +174,7 @@ bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunc
     return false;
 }
 bool generate_ssa_expr(const AstRoot *tree, const AstExpression *expr, SSAValue *out_value, SSAFunction *out,
-                       SSAStrings *strs, Arena* arena) {
+                       SSAStrings *strs, Arena *arena) {
     ASSERT(expr, "Sanity check");
     ASSERT(out_value, "Sanity check");
 
@@ -197,8 +209,7 @@ bool generate_ssa_expr(const AstRoot *tree, const AstExpression *expr, SSAValue 
             report_error(expr->begin, tree->source.src.items, tree->source.name);
             return false;
         }
-        out_value->type = SSAVT_TEMP;
-        out_value->temp = p->index;
+        *out_value = p->value;
         return true;
     }
     case AET_FUNCTION_CALL: {
