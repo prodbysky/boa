@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
 
     Parser p = {
         .arena = &arena,
-        .origin = l.file,
+        .origin = FILE_VIEW_FROM_FILE(file),
         .last_token = {0},
         .tokens =
             {

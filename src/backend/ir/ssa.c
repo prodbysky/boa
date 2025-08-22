@@ -85,7 +85,7 @@ bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunc
         NameValuePair *p;
         if (!get_if_known_variable(&out->scopes, st->assign.name, &p)) {
             log_diagnostic(LL_ERROR, "Tried to reassign an unknown variable");
-            report_error(st->begin, st->begin + st->len, tree->source.src.items, tree->source.name);
+            report_error(st->begin, tree->source.src.items, tree->source.name);
             return false;
         }
         SSAStatement st = {
@@ -194,7 +194,7 @@ bool generate_ssa_expr(const AstRoot *tree, const AstExpression *expr, SSAValue 
         NameValuePair *p = NULL;
         if (!get_if_known_variable(&out->scopes, expr->ident, &p)) {
             log_diagnostic(LL_ERROR, "Found an unknown identifier in place of a expression");
-            report_error(expr->begin, expr->begin + expr->len, tree->source.src.items, tree->source.name);
+            report_error(expr->begin, tree->source.src.items, tree->source.name);
             return false;
         }
         out_value->type = SSAVT_TEMP;

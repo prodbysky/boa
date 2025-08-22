@@ -124,7 +124,7 @@ bool lexer_lex_number(Lexer *lexer, Token *out) {
     if (isalpha(*end)) {
         log_diagnostic(LL_ERROR, "You can't have numeric literal next to "
                                  "any alphabetic characters");
-        report_error(begin, end, lexer->begin_of_src, lexer->file.name);
+        report_error(begin, lexer->begin_of_src, lexer->file.name);
         return false;
     }
     out->type = TT_NUMBER;
@@ -158,9 +158,10 @@ void lexer_skip_ws(Lexer *lexer) {
     while (!lexer_is_empty(lexer) && isspace((lexer_peek(lexer, 0)))) lexer_consume(lexer);
 }
 
-void report_error(const char *begin, const char *end, const char *src, const char *name) {
+void report_error(const char *begin, const char *src, const char *name) {
+    ASSERT(src <= begin, "The `begin` ptr has to be after the beginning of the source");
     int row = 1, col = 1; // x, y;
-    ptrdiff_t offset = end - begin;
+    ptrdiff_t offset = begin - src;
     for (int i = 0; i < offset; i++) {
         if (src[i] == '\n') {
             col++;

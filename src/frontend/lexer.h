@@ -82,6 +82,6 @@ char lexer_consume(Lexer *lexer);
 
 void lexer_skip_ws(Lexer *lexer);
 
-void report_error(const char *begin, const char *end, const char *src, const char *name);
+void report_error(const char *begin, const char *src, const char *name);
 
 #endif
