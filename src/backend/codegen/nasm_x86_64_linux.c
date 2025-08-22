@@ -53,17 +53,21 @@ bool nasm_x86_64_linux_generate_file(FILE *sink, const SSAModule *mod) {
 
 static bool generate_function(FILE *sink, const SSAFunction *func) {
     fprintf(sink, STR_FMT ":\n", STR_ARG(func->name));
-    fprintf(sink, "  enter %ld, 0\n", func->max_temps * 8);
+    fprintf(sink, "  push rbp\n");
+    fprintf(sink, "  mov rbp, rsp\n");
+    fprintf(sink, "  sub rsp, %ld\n", func->max_temps * 8);
 
     for (size_t i = 0; i < func->body.count; i++) { generate_statement(sink, &func->body.items[i]); }
 
     fprintf(sink, "ret%ld:\n", f_count);
-    fprintf(sink, "  leave\n");
+    fprintf(sink, "  mov rsp, rbp\n");
+    fprintf(sink, "  pop rbp\n");
     fprintf(sink, "  ret\n");
     f_count++;
 
     return true;
 }
+
 
 static bool generate_statement(FILE *sink, const SSAStatement *st) {
     switch (st->type) {
