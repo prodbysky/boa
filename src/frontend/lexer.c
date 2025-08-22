@@ -62,6 +62,7 @@ bool lexer_run(Lexer *lexer, Tokens *out) {
         case '(': lex_single_char(lexer, out, TT_OPEN_PAREN); continue;
         case ')': lex_single_char(lexer, out, TT_CLOSE_PAREN); continue;
         case ',': lex_single_char(lexer, out, TT_COMMA); continue;
+        // TODO: Lex string literals as a token
         case '"': lex_single_char(lexer, out, TT_DOUBLE_QUOTE); continue;
         default: {
             log_diagnostic(LL_INFO, "Don't know some letter skipping for sake of asm");
