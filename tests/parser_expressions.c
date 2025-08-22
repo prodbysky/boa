@@ -4,11 +4,11 @@
 
 int main() {
     char *src = "1 + 1 * 3";
-    Lexer l = {.begin_of_src = src, .file = {.name = "CONST", .src = SV_FROM_CSTR(src)}};
+    Arena arena = arena_new(1024);
+    Lexer l = {.begin_of_src = src, .file = {.name = "CONST", .src = SV_FROM_CSTR(src)}, .arena = &arena};
     Tokens ts = {0};
     ASSERT(lexer_run(&l, &ts), "The source code should be lexible without any errors");
 
-    Arena arena = arena_new(1024);
     Parser p = {
         .arena = &arena,
         .last_token = {0},

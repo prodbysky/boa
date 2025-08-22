@@ -1,6 +1,7 @@
 #include "target.h"
 #include "arena.h"
 #include "backend/codegen/nasm_x86_64_linux.h"
+#include "log.h"
 #include "util.h"
 #include <stdio.h>
 
@@ -62,8 +63,9 @@ static bool linux_nasm_assemble(char *root_path, Arena* arena) {
     path_add_ext(&p_o, "o", arena);
     char *p_o_c = path_to_cstr(&p_o, arena);
 
-    if (run_program("nasm", 5, (char *[]){p_asm_c, "-f", "elf64", "-o", p_o_c, NULL}) != 0) {
-        log_diagnostic(LL_ERROR, "nasm failed");
+    int exit_code = run_program("nasm", 5, (char *[]){p_asm_c, "-f", "elf64", "-o", p_o_c, NULL});
+    if (exit_code != 0) {
+        log_diagnostic(LL_ERROR, "nasm failed (exit code: %d), %s -> %s", exit_code, p_asm_c, p_o_c);
         return false;
     }
     return true;
@@ -74,8 +76,9 @@ static bool linux_nasm_link(char *root_path, Arena* arena) {
     path_add_ext(&p_o, "o", arena);
     char *p_o_c = path_to_cstr(&p_o, arena);
 
-    if (run_program("ld", 3, (char *[]){p_o_c, "-o", root_path, NULL}) != 0) {
-        log_diagnostic(LL_ERROR, "ld failed");
+    int exit_code = run_program("ld", 3, (char *[]){p_o_c, "-o", root_path, NULL});
+    if (exit_code != 0) {
+        log_diagnostic(LL_ERROR, "ld failed (exit code: %d), %s -> %s", exit_code, p_o_c, root_path);
         return false;
     }
 

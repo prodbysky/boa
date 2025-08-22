@@ -183,8 +183,7 @@ static void emit_assign(FILE *sink, const SSAStatement *st) {
     ASSERT(st->type == SSAST_ASSIGN,
            "This function should only be called when the type of the statement is SSAST_ASSIGN");
 
-    SSAValue temp_value = st->assign.value;
-    move_value_into_value(sink, &st->assign.value, &temp_value);
+    move_value_into_value(sink, &st->assign.value, &st->assign.place);
 }
 
 static void emit_call(FILE *sink, const SSAStatement *st) {

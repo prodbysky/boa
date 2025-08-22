@@ -60,7 +60,8 @@ int main(int argc, char **argv) {
 
     if (c.dump_ir) {
         dump_ir(&mod);
-        return 0;
+        result = 0;
+        goto defer;
     }
 
     c.target->generate(c.output_name, &mod, &arena);

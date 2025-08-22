@@ -88,11 +88,11 @@ bool read_file(const char *file_name, String *s, Arena* arena) {
     size_t size = ftell(file);
     s->count = size;
     s->capacity = size;
-    s->items = arena_alloc(arena, sizeof(char) * size + 1);
+    s->items = arena_alloc(arena, sizeof(char) * (size + 1));
     fseek(file, 0, SEEK_SET);
     size_t read = fread(s->items, sizeof(char), size, file);
     if (read != size) {
-        log_message(LL_ERROR, "Failed to read whole file %s");
+        log_message(LL_ERROR, "Failed to read whole file %s", file_name);
         fclose(file);
         return false;
     }

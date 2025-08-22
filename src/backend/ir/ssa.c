@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <wchar.h>
 
 bool generate_ssa_module(const AstRoot *ast, SSAModule *out, Arena *arena) {
     ASSERT(ast, "Sanity check");
@@ -44,7 +43,8 @@ bool get_if_known_variable(SSABadBoyStack *vals, StringView view, NameValuePair 
     for (size_t i = vals->count; i != 0; i--) {
         SSANameToValue *current_stack = &vals->items[i - 1];
         for (size_t j = 0; j < current_stack->count; j++) {
-            if (strncmp(view.items, current_stack->items[j].name.items, view.count) == 0) {
+            const StringView *candidate = &current_stack->items[j].name;
+            if (candidate->count == view.count && strncmp(view.items, candidate->items, view.count) == 0) {
                 *out = &current_stack->items[j];
                 return true;
             }
@@ -249,120 +249,117 @@ bool generate_ssa_expr(const AstRoot *tree, const AstExpression *expr, SSAValue 
     return false;
 }
 
-void ir_value_repr(const SSAValue* v) {
+void ir_value_repr(const SSAValue *v) {
     switch (v->type) {
-        case SSAVT_CONST: {
-            printf("%zu", v->constant);
-            return;
-        }
-        case SSAVT_TEMP: {
-            printf("$%zu", v->temp);
-            return;
-        }
-        case SSAVT_STRING: {
-            printf("^%zu", v->string_index);
-            return;
-        }
-        case SSAVT_ARG: {
-            printf("#%zu", v->arg_index);
-            return;
-        }
+    case SSAVT_CONST: {
+        printf("%zu", v->constant);
+        return;
+    }
+    case SSAVT_TEMP: {
+        printf("$%zu", v->temp);
+        return;
+    }
+    case SSAVT_STRING: {
+        printf("^%zu", v->string_index);
+        return;
+    }
+    case SSAVT_ARG: {
+        printf("#%zu", v->arg_index);
+        return;
+    }
     }
 }
 
-void dump_ir(const SSAModule* mod) {
+void dump_ir(const SSAModule *mod) {
     for (size_t i = 0; i < mod->functions.count; i++) {
-        const SSAFunction* f = &mod->functions.items[i];
-        printf("function "STR_FMT"(", STR_ARG(f->name));
-        for (size_t j = 0; j < f->arg_count; j++) {
-            printf("#%zu ", j);
-        }
+        const SSAFunction *f = &mod->functions.items[i];
+        printf("function " STR_FMT "(", STR_ARG(f->name));
+        for (size_t j = 0; j < f->arg_count; j++) { printf("#%zu ", j); }
         printf(") {\n");
         for (size_t j = 0; j < f->body.count; j++) {
-            const SSAStatement* st = &f->body.items[j];
+            const SSAStatement *st = &f->body.items[j];
             printf("  ");
             switch (st->type) {
-                case SSAST_ADD: {
-                    ir_value_repr(&st->binop.result);
+            case SSAST_ADD: {
+                ir_value_repr(&st->binop.result);
+                printf(" <- ");
+                ir_value_repr(&st->binop.l);
+                printf(" + ");
+                ir_value_repr(&st->binop.r);
+                break;
+            }
+            case SSAST_SUB: {
+                ir_value_repr(&st->binop.result);
+                printf(" <- ");
+                ir_value_repr(&st->binop.l);
+                printf(" - ");
+                ir_value_repr(&st->binop.r);
+                break;
+            }
+            case SSAST_MUL: {
+                ir_value_repr(&st->binop.result);
+                printf(" <- ");
+                ir_value_repr(&st->binop.l);
+                printf(" * ");
+                ir_value_repr(&st->binop.r);
+                break;
+            }
+            case SSAST_DIV: {
+                ir_value_repr(&st->binop.result);
+                printf(" <- ");
+                ir_value_repr(&st->binop.l);
+                printf(" / ");
+                ir_value_repr(&st->binop.r);
+                break;
+            }
+            case SSAST_ASM: {
+                printf("asm(\n");
+                printf(STR_FMT, STR_ARG(st->asm));
+                printf(")");
+                break;
+            }
+            case SSAST_ASSIGN: {
+                ir_value_repr(&st->assign.place);
+                printf(" <- ");
+                ir_value_repr(&st->assign.value);
+                break;
+            }
+            case SSAST_RETURN: {
+                printf("ret <- ");
+                ir_value_repr(&st->ret.value);
+                break;
+            }
+            case SSAST_RETURN_EMPTY: {
+                printf("ret");
+                break;
+            }
+            case SSAST_JMP: {
+                printf("jump @%zu", st->jmp);
+                break;
+            }
+            case SSAST_JZ: {
+                printf("jz ");
+                ir_value_repr(&st->jz.cond);
+                printf(" @%zu", st->jz.to);
+                break;
+            }
+            case SSAST_CALL: {
+                if (st->call.returns) {
+                    ir_value_repr(&st->call.return_v);
                     printf(" <- ");
-                    ir_value_repr(&st->binop.l);
-                    printf(" + ");
-                    ir_value_repr(&st->binop.r);
-                    break;
                 }
-                case SSAST_SUB: {
-                    ir_value_repr(&st->binop.result);
-                    printf(" <- ");
-                    ir_value_repr(&st->binop.l);
-                    printf(" - ");
-                    ir_value_repr(&st->binop.r);
-                    break;
+                printf("call " STR_FMT "(", STR_ARG(st->call.name));
+                for (size_t k = 0; k < st->call.args.count; k++) {
+                    ir_value_repr(&st->call.args.items[k]);
+                    if (k + 1 < st->call.args.count) printf(", ");
                 }
-                case SSAST_MUL: {
-                    ir_value_repr(&st->binop.result);
-                    printf(" <- ");
-                    ir_value_repr(&st->binop.l);
-                    printf(" * ");
-                    ir_value_repr(&st->binop.r);
-                    break;
-                }
-                case SSAST_DIV: {
-                    ir_value_repr(&st->binop.result);
-                    printf(" <- ");
-                    ir_value_repr(&st->binop.l);
-                    printf(" / ");
-                    ir_value_repr(&st->binop.r);
-                    break;
-                }
-                case SSAST_ASM: {
-                    printf("asm(\n");
-                    printf(STR_FMT, STR_ARG(st->asm));
-                    printf(")");
-                    break;
-                }
-                case SSAST_ASSIGN: {
-                    ir_value_repr(&st->assign.place);
-                    printf(" <- ");
-                    ir_value_repr(&st->assign.value);
-                    break;
-                }
-                case SSAST_RETURN: {
-                    printf("ret <- ");
-                    ir_value_repr(&st->ret.value);
-                    break;
-                }
-                case SSAST_RETURN_EMPTY: {
-                    printf("ret");
-                    break;
-                }
-                case SSAST_JMP: {
-                    printf("jump @%zu", st->jmp);
-                    break;
-                }
-                case SSAST_JZ: {
-                    printf("jz ");
-                    ir_value_repr(&st->jz.cond);
-                    printf(" @%zu", st->jz.to);
-                    break;
-                }
-                case SSAST_CALL: {
-                    if (st->call.returns) {
-                        ir_value_repr(&st->call.return_v);
-                        printf(" <- ");
-
-                    }
-                    printf("call "STR_FMT"(", STR_ARG(st->call.name));
-                    for (size_t k = 0; k < st->call.args.count; k++) {
-                        ir_value_repr(&st->call.args.items[k]);
-                        printf(", ");
-                    }
-                    printf(")\n");
-                    break;
-                }
-                case SSAST_LABEL: {
-                    printf("@%zu:", st->label);
-                    break;
-                }
+                printf(")");
+                break;
+            }
+            case SSAST_LABEL: {
+                printf("@%zu:", st->label);
+                break;
+            }
             }
             printf("\n");
         }

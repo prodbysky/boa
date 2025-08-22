@@ -14,7 +14,7 @@
 
 #define ASSERT(cond, msg, ...)                                                                                              \
     if (!(cond)) {                                                                                                     \
-        log_message(LL_ERROR, "Assert Failed: "msg, # __VA_ARGS__);                                                               \
+        log_message(LL_ERROR, "Assert Failed: "msg, ## __VA_ARGS__);                                                               \
         exit(1);                                                                                                       \
     }
 
