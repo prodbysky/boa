@@ -15,27 +15,24 @@ bool parser_parse(Parser *parser, AstRoot *out) {
             StringView name = {0};
             if (!parser_expect_ident(parser, &name)) {
                 log_diagnostic(LL_ERROR, "Expected a name for a function to be here");
-                report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
-                             parser->origin.src.items, parser->origin.name);
+                report_error(parser->last_token.begin, parser->origin.src.items, parser->origin.name);
                 return false;
             }
             AstFunction f = {0};
             f.name = name;
             if (!parser_expect_and_skip(parser, TT_OPEN_PAREN)) {
                 log_diagnostic(LL_ERROR, "Expected an `(` symbol here to denote an argument list");
-                report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
-                             parser->origin.src.items, parser->origin.name);
+                report_error(parser->last_token.begin, parser->origin.src.items, parser->origin.name);
                 return false;
             }
             while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_CLOSE_PAREN) {
                 StringView arg_name = {0};
                 if (!parser_expect_ident(parser, &arg_name)) {
                     log_diagnostic(LL_ERROR, "Expected an argument name here");
-                    report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
-                                 parser->origin.src.items, parser->origin.name);
+                    report_error(parser->last_token.begin, parser->origin.src.items, parser->origin.name);
                     return false;
                 }
-                da_push(&f.args, arg_name);
+                da_push(&f.args, arg_name, parser->arena);
                 if (parser_is_empty(parser)) {
                     log_diagnostic(LL_ERROR, "Unexpected end of input in argument list");
                     return false;
@@ -48,24 +45,22 @@ bool parser_parse(Parser *parser, AstRoot *out) {
                     parser_pop(parser);
                     if (parser_is_empty(parser) || parser_peek(parser, 0).type == TT_CLOSE_PAREN) {
                         log_diagnostic(LL_ERROR, "Expected argument name after comma");
-                        report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
-                                     parser->origin.src.items, parser->origin.name);
+                        report_error(parser->last_token.begin, parser->origin.src.items, parser->origin.name);
                         return false;
                     }
                 } else {
                     log_diagnostic(LL_ERROR, "Expected comma or closing parenthesis in argument list");
-                    report_error(next.begin, next.begin + next.len, parser->origin.src.items, parser->origin.name);
+                    report_error(next.begin, parser->origin.src.items, parser->origin.name);
                     return false;
                 }
             }
             if (!parser_expect_and_skip(parser, TT_CLOSE_PAREN)) {
                 log_diagnostic(LL_ERROR, "Argument list wasn't terminated with a `)`");
-                report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
-                             parser->origin.src.items, parser->origin.name);
+                report_error(parser->last_token.begin, parser->origin.src.items, parser->origin.name);
                 return false;
             }
             if (!parser_parse_block(parser, &f.body)) return false;
-            da_push(&out->fs, f);
+            da_push(&out->fs, f, parser->arena);
         }
     }
 
@@ -75,18 +70,18 @@ bool parser_parse(Parser *parser, AstRoot *out) {
 bool parser_parse_block(Parser *parser, AstBlock *out) {
     if (!parser_expect_and_skip(parser, TT_OPEN_CURLY)) {
         log_diagnostic(LL_ERROR, "Expected a `{` to begin a block");
-        report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+        report_error(parser->last_token.begin,
                      parser->origin.src.items, parser->origin.name);
         return false;
     }
     while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_CLOSE_CURLY) {
         AstStatement st = {0};
         if (!parser_parse_statement(parser, &st)) return false;
-        da_push(out, st);
+        da_push(out, st, parser->arena);
     }
     if (parser_is_empty(parser)) {
         log_diagnostic(LL_ERROR, "Expected a `}` to end a block");
-        report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+        report_error(parser->last_token.begin,
                      parser->origin.src.items, parser->origin.name);
         return false;
     }
@@ -136,7 +131,7 @@ bool parser_parse_expr(Parser *parser, AstExpression *out) { return parser_parse
 bool parser_parse_primary(Parser *parser, AstExpression *out) {
     if (parser_is_empty(parser)) {
         log_diagnostic(LL_ERROR, "Expected an expression to be here");
-        report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+        report_error(parser->last_token.begin,
                      parser->origin.src.items, parser->origin.name);
         return false;
     }
@@ -157,12 +152,12 @@ bool parser_parse_primary(Parser *parser, AstExpression *out) {
             while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_CLOSE_PAREN) {
                 AstExpression arg = {0};
                 if (!parser_parse_expr(parser, &arg)) return false;
-                da_push(&out->func_call.args, arg);
+                da_push(&out->func_call.args, arg, parser->arena);
                 if (!parser_expect_and_skip(parser, TT_COMMA)) break;
             }
             if (!parser_expect_and_skip(parser, TT_CLOSE_PAREN)) {
                 log_diagnostic(LL_ERROR, "Argument list wasn't terminated with a `)`");
-                report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                report_error(parser->last_token.begin,
                              parser->origin.src.items, parser->origin.name);
                 return false;
             }
@@ -181,7 +176,7 @@ bool parser_parse_primary(Parser *parser, AstExpression *out) {
         while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_DOUBLE_QUOTE) parser_pop(parser);
         if (parser_is_empty(parser)) {
             log_diagnostic(LL_ERROR, "Unterminated string literal");
-            report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+            report_error(parser->last_token.begin,
                          parser->origin.src.items, parser->origin.name);
             return false;
         }
@@ -195,7 +190,7 @@ bool parser_parse_primary(Parser *parser, AstExpression *out) {
     }
     default: {
         log_diagnostic(LL_ERROR, "Expected an expression to be here");
-        report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+        report_error(parser->last_token.begin,
                      parser->origin.src.items, parser->origin.name);
         return false;
     }
@@ -205,7 +200,7 @@ bool parser_parse_primary(Parser *parser, AstExpression *out) {
 bool parser_parse_factor(Parser *parser, AstExpression *out) {
     if (parser_is_empty(parser)) {
         log_diagnostic(LL_ERROR, "Expected an expression to be here");
-        report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+        report_error(parser->last_token.begin,
                      parser->origin.src.items, parser->origin.name);
         return false;
     }
@@ -234,7 +229,7 @@ bool parser_parse_factor(Parser *parser, AstExpression *out) {
 bool parser_parse_term(Parser *parser, AstExpression *out) {
     if (parser_is_empty(parser)) {
         log_diagnostic(LL_ERROR, "Expected an expression to be here");
-        report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+        report_error(parser->last_token.begin,
                      parser->origin.src.items, parser->origin.name);
         return false;
     }
@@ -272,7 +267,7 @@ bool parser_parse_statement(Parser *parser, AstStatement *out) {
         case KT_RETURN: {
             if (parser_is_empty(parser)) {
                 log_diagnostic(LL_ERROR, "Expected a semicolon or an expression here not EOF");
-                report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                report_error(parser->last_token.begin,
                              parser->origin.src.items, parser->origin.name);
                 return false;
             }
@@ -295,13 +290,13 @@ bool parser_parse_statement(Parser *parser, AstStatement *out) {
         case KT_LET: {
             if (!parser_expect_ident(parser, &out->let.name)) {
                 log_diagnostic(LL_ERROR, "Expected a name for a variable definition here");
-                report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                report_error(parser->last_token.begin,
                              parser->origin.src.items, parser->origin.name);
                 return false;
             }
             if (!parser_expect_and_skip(parser, TT_ASSIGN)) {
                 log_diagnostic(LL_ERROR, "Expected `=` here after the name of the let binding");
-                report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                report_error(parser->last_token.begin,
                              parser->origin.src.items, parser->origin.name);
                 return false;
             }
@@ -337,7 +332,7 @@ bool parser_parse_statement(Parser *parser, AstStatement *out) {
             out->type = AST_ASM;
             if (!parser_expect_and_skip(parser, TT_OPEN_PAREN)) {
                 log_diagnostic(LL_ERROR, "Expected `(` to denote the beginning of the asm statement");
-                report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                report_error(parser->last_token.begin,
                              parser->origin.src.items, parser->origin.name);
                 return false;
             }
@@ -364,12 +359,12 @@ bool parser_parse_statement(Parser *parser, AstStatement *out) {
             while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_CLOSE_PAREN) {
                 AstExpression arg = {0};
                 if (!parser_parse_expr(parser, &arg)) { return false; }
-                da_push(&out->call.args, arg);
+                da_push(&out->call.args, arg, parser->arena);
                 if (!parser_expect_and_skip(parser, TT_COMMA)) { break; }
             }
             if (!parser_expect_and_skip(parser, TT_CLOSE_PAREN)) {
                 log_diagnostic(LL_ERROR, "Argument list wasn't terminated with a `)`");
-                report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+                report_error(parser->last_token.begin,
                              parser->origin.src.items, parser->origin.name);
                 return false;
             }
@@ -377,7 +372,7 @@ bool parser_parse_statement(Parser *parser, AstStatement *out) {
         }
         default: {
             log_diagnostic(LL_ERROR, "Expected `=` after this identifier");
-            report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+            report_error(parser->last_token.begin,
                          parser->origin.src.items, parser->origin.name);
             return false;
         }
@@ -386,7 +381,7 @@ bool parser_parse_statement(Parser *parser, AstStatement *out) {
 
     if (parser_is_empty(parser) || parser_peek(parser, 0).type != TT_SEMICOLON) {
         log_diagnostic(LL_ERROR, "Expected a semicolon here");
-        report_error(parser->last_token.begin, parser->last_token.begin + parser->last_token.len,
+        report_error(parser->last_token.begin,
                      parser->origin.src.items, parser->origin.name);
         return false;
     }

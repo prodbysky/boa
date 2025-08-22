@@ -53,26 +53,21 @@ bool nasm_x86_64_linux_generate_file(FILE *sink, const SSAModule *mod) {
 
 static bool generate_function(FILE *sink, const SSAFunction *func) {
     fprintf(sink, STR_FMT ":\n", STR_ARG(func->name));
-    fprintf(sink, "  enter %ld, 0\n", func->max_temps * 8);
-
-    for (size_t i = 0; i < func->arg_count && i < 6; i++) {
-        fprintf(sink, "  mov [rbp - %zu], %s\n", (i + 1) * 8, idx_to_reg[i]);
-    }
-    // oh fuck naw :sob:
-    for (int i = func->arg_count - 1; i > 5; i--) {
-        fprintf(sink, "  mov rax, [rbp + %d]\n", 16 + ((i - 6) * 8));
-        fprintf(sink, "  mov [rbp - %d], rax\n", (i + 1) * 8);
-    }
+    fprintf(sink, "  push rbp\n");
+    fprintf(sink, "  mov rbp, rsp\n");
+    fprintf(sink, "  sub rsp, %ld\n", func->max_temps * 8);
 
     for (size_t i = 0; i < func->body.count; i++) { generate_statement(sink, &func->body.items[i]); }
 
     fprintf(sink, "ret%ld:\n", f_count);
-    fprintf(sink, "  leave\n");
+    fprintf(sink, "  mov rsp, rbp\n");
+    fprintf(sink, "  pop rbp\n");
     fprintf(sink, "  ret\n");
     f_count++;
 
     return true;
 }
+
 
 static bool generate_statement(FILE *sink, const SSAStatement *st) {
     switch (st->type) {
@@ -123,7 +118,7 @@ static bool generate_statement(FILE *sink, const SSAStatement *st) {
         return true;
     }
     case SSAST_ASM: {
-        fprintf(sink, STR_FMT"\n", STR_ARG(st->asm));
+        fprintf(sink, STR_FMT "\n", STR_ARG(st->asm));
         return true;
     }
     }
@@ -188,8 +183,7 @@ static void emit_assign(FILE *sink, const SSAStatement *st) {
     ASSERT(st->type == SSAST_ASSIGN,
            "This function should only be called when the type of the statement is SSAST_ASSIGN");
 
-    SSAValue temp_value = {.temp = st->assign.place, .type = SSAVT_TEMP};
-    move_value_into_value(sink, &st->assign.value, &temp_value);
+    move_value_into_value(sink, &st->assign.value, &st->assign.place);
 }
 
 static void emit_call(FILE *sink, const SSAStatement *st) {
@@ -269,6 +263,15 @@ static void value_asm_repr(FILE *sink, const SSAValue *value) {
     }
     case SSAVT_STRING: {
         fprintf(sink, "str_%zu", (value->string_index));
+        break;
+    }
+    case SSAVT_ARG: {
+        if (value->arg_index < 6) {
+            fprintf(sink, "%s", idx_to_reg[(value->arg_index)]);
+        } else {
+            fprintf(sink, "[rbp + %zu]", ((value->arg_index - 6) * 8) + 16);
+        }
+        break;
     }
     }
 }

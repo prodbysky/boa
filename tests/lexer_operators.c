@@ -4,7 +4,8 @@
 
 int main() {
     char *src = "+ -/*";
-    Lexer l = {.begin_of_src = src, .file = {.name = "CONST", .src = SV_FROM_CSTR(src)}};
+    Arena arena = arena_new(1024);
+    Lexer l = {.begin_of_src = src, .file = {.name = "CONST", .src = SV_FROM_CSTR(src)}, .arena = &arena};
     Tokens out = {0};
     ASSERT(lexer_run(&l, &out), "The source code should be lexible without any errors");
 

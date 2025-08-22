@@ -10,39 +10,24 @@
 #include "config.h"
 #include "target.h"
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#ifdef __unix__
-const TargetKind default_target = TK_Linux_x86_64_NASM;
-#elif defined(_WIN32)
-const TargetKind default_target = TK_Win_x86_64_MINGW;
-#endif
 
 int main(int argc, char **argv) {
     int result = 0;
+    Arena arena = arena_new(1024 * 1024);
     Config c = {0};
 
-    if (!parse_config(&c, argc, argv)) {
+    if (!parse_config(&c, argc, argv, &arena)) {
         usage(c.exe_name);
         result = 1;
         goto defer;
     }
 
-    Target *t = NULL;
-    const char *target_name = (c.target == NULL) ? target_enum_to_str(default_target) : c.target;
-    if (!find_target(&t, target_name)) {
-        log_diagnostic(LL_ERROR, "Unknown target %s", c.target ? c.target : "(default)");
-        result = 1;
-        goto defer;
-    }
-
     SourceFile file = {0};
-    if (!read_source_file(c.input_name, &file)) {
+    if (!read_source_file(c.input_name, &file, &arena)) {
         result = 1;
         goto defer;
     }
-    Lexer l = {.begin_of_src = file.src.items, .file = FILE_VIEW_FROM_FILE(file)};
+    Lexer l = {.begin_of_src = file.src.items, .file = FILE_VIEW_FROM_FILE(file), .arena = &arena};
     Tokens tokens = {0};
 
     if (!lexer_run(&l, &tokens)) {
@@ -51,11 +36,9 @@ int main(int argc, char **argv) {
         goto defer;
     }
 
-    Arena arena = arena_new(1024 * 1024);
-
     Parser p = {
         .arena = &arena,
-        .origin = l.file,
+        .origin = FILE_VIEW_FROM_FILE(file),
         .last_token = {0},
         .tokens =
             {
@@ -70,33 +53,23 @@ int main(int argc, char **argv) {
     }
 
     SSAModule mod = {0};
-    if (!generate_ssa_module(&root, &mod)) {
+    if (!generate_ssa_module(&root, &mod, &arena)) {
         result = 1;
         goto defer;
     }
 
-    t->generate(c.output_name, &mod);
-    t->assemble(c.output_name);
-    t->link(c.output_name);
-    if (!c.keep_build_artifacts) t->cleanup(c.output_name);
+    if (c.dump_ir) {
+        dump_ir(&mod);
+        result = 0;
+        goto defer;
+    }
+
+    c.target->generate(c.output_name, &mod, &arena);
+    c.target->assemble(c.output_name, &arena);
+    c.target->link(c.output_name, &arena);
+    if (!c.keep_build_artifacts) c.target->cleanup(c.output_name, &arena);
 
 defer:
-    if (root.fs.items != NULL) free(root.fs.items);
-    if (mod.functions.items != NULL) {
-        for (size_t i = 0; i < mod.functions.count; i++) {
-            if (mod.functions.items[i].body.items != NULL) free(mod.functions.items[i].body.items);
-            for (size_t j = 0; j < mod.functions.items[i].scopes.count; j++) {
-                if (mod.functions.items[i].scopes.items[j].items != NULL) {
-                    free(mod.functions.items[i].scopes.items[j].items);
-                }
-            }
-            free(mod.functions.items[i].scopes.items);
-        }
-        free(mod.functions.items);
-    }
     arena_free(&arena);
-    if (tokens.items != NULL) free(tokens.items);
-    if (file.src.items != NULL) free(file.src.items);
-    if (c.should_free_output_name) free(c.output_name);
     return result;
 }

@@ -1,6 +1,7 @@
 #ifndef LEXER_H_
 #define LEXER_H_
 #include "../sv.h"
+#include "../arena.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -9,6 +10,7 @@
 typedef struct {
     SourceFileView file;
     const char *begin_of_src;
+    Arena* arena;
 } Lexer;
 
 typedef enum {
@@ -80,6 +82,6 @@ char lexer_consume(Lexer *lexer);
 
 void lexer_skip_ws(Lexer *lexer);
 
-void report_error(const char *begin, const char *end, const char *src, const char *name);
+void report_error(const char *begin, const char *src, const char *name);
 
 #endif

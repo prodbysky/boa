@@ -15,7 +15,7 @@ static const OperatorType char_to_op[] = {
 
 static void lex_single_char(Lexer *lexer, Tokens *out, TokenType new) {
     Token t = {.len = 1, .begin = lexer->file.src.items, .type = new};
-    da_push(out, t);
+    da_push(out, t, lexer->arena);
     lexer_consume(lexer);
 }
 
@@ -29,14 +29,14 @@ bool lexer_run(Lexer *lexer, Tokens *out) {
         if (isdigit(lexer_peek(lexer, 0))) {
             Token t = {0};
             if (!lexer_lex_number(lexer, &t)) return false;
-            da_push(out, t);
+            da_push(out, t, lexer->arena);
             continue;
         }
 
         if (lexer_peek(lexer, 0) == '_' || isalpha(lexer_peek(lexer, 0))) {
             Token t = {0};
             if (!lexer_lex_ident_or_keyword(lexer, &t)) return false;
-            da_push(out, t);
+            da_push(out, t, lexer->arena);
             continue;
         }
 
@@ -51,7 +51,7 @@ bool lexer_run(Lexer *lexer, Tokens *out) {
             t.len = 1;
             t.begin = lexer->file.src.items;
             t.operator= char_to_op[(size_t)lexer_peek(lexer, 0)];
-            da_push(out, t);
+            da_push(out, t, lexer->arena);
             lexer_consume(lexer);
             continue;
         }
@@ -62,6 +62,7 @@ bool lexer_run(Lexer *lexer, Tokens *out) {
         case '(': lex_single_char(lexer, out, TT_OPEN_PAREN); continue;
         case ')': lex_single_char(lexer, out, TT_CLOSE_PAREN); continue;
         case ',': lex_single_char(lexer, out, TT_COMMA); continue;
+        // TODO: Lex string literals as a token
         case '"': lex_single_char(lexer, out, TT_DOUBLE_QUOTE); continue;
         default: {
             log_diagnostic(LL_INFO, "Don't know some letter skipping for sake of asm");
@@ -124,7 +125,7 @@ bool lexer_lex_number(Lexer *lexer, Token *out) {
     if (isalpha(*end)) {
         log_diagnostic(LL_ERROR, "You can't have numeric literal next to "
                                  "any alphabetic characters");
-        report_error(begin, end, lexer->begin_of_src, lexer->file.name);
+        report_error(begin, lexer->begin_of_src, lexer->file.name);
         return false;
     }
     out->type = TT_NUMBER;
@@ -158,9 +159,10 @@ void lexer_skip_ws(Lexer *lexer) {
     while (!lexer_is_empty(lexer) && isspace((lexer_peek(lexer, 0)))) lexer_consume(lexer);
 }
 
-void report_error(const char *begin, const char *end, const char *src, const char *name) {
+void report_error(const char *begin, const char *src, const char *name) {
+    ASSERT(src <= begin, "The `begin` ptr has to be after the beginning of the source");
     int row = 1, col = 1; // x, y;
-    ptrdiff_t offset = end - begin;
+    ptrdiff_t offset = begin - src;
     for (int i = 0; i < offset; i++) {
         if (src[i] == '\n') {
             col++;

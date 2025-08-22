@@ -4,10 +4,10 @@
 
 int main() {
     char *src = "123 69\n 1";
-    Lexer l = {.begin_of_src = src, .file = {.name = "CONST", .src = SV_FROM_CSTR(src)}};
+    Arena arena = arena_new(1024);
+    Lexer l = {.begin_of_src = src, .file = {.name = "CONST", .src = SV_FROM_CSTR(src)}, .arena = &arena};
     Tokens out = {0};
     ASSERT(lexer_run(&l, &out), "The source code should be lexible without any errors");
-
 
     Token expected[] = {
         (Token){.type = TT_NUMBER, .begin = src, .len = 3, .number = 123},

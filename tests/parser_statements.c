@@ -4,11 +4,11 @@
 
 int main() {
     char *src = "return; return 123; let number = 123;";
-    Lexer l = {.begin_of_src = src, .file = {.name = "CONST", .src = SV_FROM_CSTR(src)}};
+    Arena arena = arena_new(1024);
+    Lexer l = {.begin_of_src = src, .file = {.name = "CONST", .src = SV_FROM_CSTR(src)}, .arena = &arena};
     Tokens ts = {0};
     ASSERT(lexer_run(&l, &ts), "The source code should be lexible without any errors");
 
-    Arena arena = arena_new(1024);
     Parser p = {
         .arena = &arena,
         .last_token = {0},
@@ -46,7 +46,7 @@ int main() {
         if (let_statement.begin != src + 20) return 1;
         if (let_statement.len != 17) return 1;
         if (let_statement.type != AST_LET) return 1;
-        if (strncmp((char*)let_statement.let.name.items, "number", 6) != 0) return 1;
+        if (strncmp((char *)let_statement.let.name.items, "number", 6) != 0) return 1;
     }
 
     return 0;

@@ -7,10 +7,17 @@
 #include <stdlib.h>
 #include <string.h>
 
-bool parse_config(Config *conf, int argc, char **argv) {
+#ifdef __unix__
+const TargetKind default_target = TK_Linux_x86_64_NASM;
+#elif defined(_WIN32)
+const TargetKind default_target = TK_Win_x86_64_MINGW;
+#endif
+
+bool parse_config(Config *conf, int argc, char **argv, Arena *arena) {
     conf->exe_name = *argv;
     argc--;
     argv++;
+    find_target(&conf->target, target_enum_to_str(default_target));
 
     while (argc > 0) {
         if (strcmp(*argv, "-o") == 0) {
@@ -49,10 +56,12 @@ bool parse_config(Config *conf, int argc, char **argv) {
                 log_diagnostic(LL_ERROR, "Unknown target name %s (run %s -list-targets)", *argv, conf->exe_name);
                 return false;
             } else {
-                conf->target = *argv;
-                argc--;
-                argv++;
+                conf->target = t;
             }
+        } else if (strcmp(*argv, "-ir") == 0) {
+            conf->dump_ir = true;
+            argc--;
+            argv++;
         } else {
             if (**argv == '-') {
                 log_diagnostic(LL_ERROR, "Unknown flag supplied");
@@ -75,7 +84,7 @@ bool parse_config(Config *conf, int argc, char **argv) {
 
     if (conf->output_name == NULL) {
         size_t len = strlen(conf->input_name) - 3;
-        conf->output_name = malloc(sizeof(char) * (len + 1));
+        conf->output_name = arena_alloc(arena, sizeof(char) * (len + 1));
         conf->output_name[len] = 0;
         conf->should_free_output_name = true;
         snprintf(conf->output_name, len, "%s", conf->input_name);
@@ -94,4 +103,5 @@ void usage(char *program_name) {
     log_diagnostic(LL_INFO, "    -no-opt         : Don't optimize the code");
     log_diagnostic(LL_INFO, "    -target <TARGET>: Select the target");
     log_diagnostic(LL_INFO, "    -list-targets   : List available targets");
+    log_diagnostic(LL_INFO, "    -ir             : Dump the IR");
 }
