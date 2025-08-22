@@ -9,7 +9,7 @@
 #include "backend/ir/ssa.h"
 #include "config.h"
 #include "target.h"
-
+#include <stdio.h>
 
 int main(int argc, char **argv) {
     int result = 0;
@@ -56,6 +56,11 @@ int main(int argc, char **argv) {
     if (!generate_ssa_module(&root, &mod, &arena)) {
         result = 1;
         goto defer;
+    }
+
+    if (c.dump_ir) {
+        dump_ir(&mod);
+        return 0;
     }
 
     c.target->generate(c.output_name, &mod, &arena);

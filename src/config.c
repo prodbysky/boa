@@ -13,7 +13,7 @@ const TargetKind default_target = TK_Linux_x86_64_NASM;
 const TargetKind default_target = TK_Win_x86_64_MINGW;
 #endif
 
-bool parse_config(Config *conf, int argc, char **argv, Arena* arena) {
+bool parse_config(Config *conf, int argc, char **argv, Arena *arena) {
     conf->exe_name = *argv;
     argc--;
     argv++;
@@ -58,6 +58,10 @@ bool parse_config(Config *conf, int argc, char **argv, Arena* arena) {
             } else {
                 conf->target = t;
             }
+        } else if (strcmp(*argv, "-ir") == 0) {
+            conf->dump_ir = true;
+            argc--;
+            argv++;
         } else {
             if (**argv == '-') {
                 log_diagnostic(LL_ERROR, "Unknown flag supplied");
@@ -86,7 +90,6 @@ bool parse_config(Config *conf, int argc, char **argv, Arena* arena) {
         snprintf(conf->output_name, len, "%s", conf->input_name);
     }
 
-
     return true;
 }
 
@@ -100,4 +103,5 @@ void usage(char *program_name) {
     log_diagnostic(LL_INFO, "    -no-opt         : Don't optimize the code");
     log_diagnostic(LL_INFO, "    -target <TARGET>: Select the target");
     log_diagnostic(LL_INFO, "    -list-targets   : List available targets");
+    log_diagnostic(LL_INFO, "    -ir             : Dump the IR");
 }

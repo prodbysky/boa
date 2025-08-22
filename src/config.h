@@ -11,6 +11,7 @@ typedef struct {
     Target* target;
     bool should_free_output_name;
     bool keep_build_artifacts;
+    bool dump_ir;
 } Config;
 
 bool parse_config(Config *conf, int argc, char **argv, Arena* arena);
