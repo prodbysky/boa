@@ -1,6 +1,19 @@
 def main() {
     let input = "boa.boa";
-    write(input);
+    let buffer = "    ";
+    let fd = open(input);
+    fill_buffer(fd, buffer);
+    write(buffer);
+    return 0;
+}
+
+def fill_buffer(fd, buffer) {
+    let count = strlen(buffer);
+    __asm__(
+        mov rdx, rax
+        mov rax, 0
+        syscall
+    );
 }
 
 def strlen(str) {
@@ -30,4 +43,14 @@ def write(str) {
         syscall
     );
     return;
+}
+
+
+def open(str) {
+    __asm__(
+        mov rsi, 0
+        mov rdx, 0
+        mov rax, 2
+        syscall
+    );
 }
