@@ -1,6 +1,6 @@
 def main() {
-    write("fuck yoooo");
-    return 0;
+    let input = "boa.boa";
+    write(input);
 }
 
 def strlen(str) {

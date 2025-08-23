@@ -313,9 +313,9 @@ void dump_ir(const SSAModule *mod) {
                 break;
             }
             case SSAST_ASM: {
-                printf("asm(\n");
+                printf("asm(");
                 printf(STR_FMT, STR_ARG(st->asm));
-                printf(")");
+                printf("\n  )");
                 break;
             }
             case SSAST_ASSIGN: {

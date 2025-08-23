@@ -9,7 +9,6 @@
 #include "backend/ir/ssa.h"
 #include "config.h"
 #include "target.h"
-#include <stdio.h>
 
 int main(int argc, char **argv) {
     int result = 0;
