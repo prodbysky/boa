@@ -5,6 +5,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+static bool generate_return_st(const AstRoot *tree, Function *out, const AstStatement *st, StringPool *strs,
+                               Arena *arena);
+static bool generate_let_st(const AstRoot *tree, Function *out, const AstStatement *st, StringPool *strs, Arena *arena);
+static bool generate_assign_st(const AstRoot *tree, Function *out, const AstStatement *st, StringPool *strs,
+                               Arena *arena);
+static bool generate_call_st(const AstRoot *tree, Function *out, const AstStatement *st, StringPool *strs,
+                             Arena *arena);
+static bool generate_if_st(const AstRoot *tree, Function *out, const AstStatement *st, StringPool *strs, Arena *arena);
+static bool generate_while_st(const AstRoot *tree, Function *out, const AstStatement *st, StringPool *strs,
+                              Arena *arena);
+static bool generate_asm_st(const AstRoot *tree, Function *out, const AstStatement *st, StringPool *strs, Arena *arena);
+
 bool generate_module(const AstRoot *ast, Module *out, Arena *arena) {
     ASSERT(ast, "Sanity check");
     ASSERT(out, "Sanity check");
@@ -67,106 +79,13 @@ bool lookup_sym(ScopeStack *stack, StringView name, Sym **out_value) {
 bool generate_statement(const AstRoot *tree, const AstStatement *st, Function *out, StringPool *strs, Arena *arena) {
     ASSERT(st, "Sanity check");
     switch (st->type) {
-    case AST_RETURN: {
-        if (!st->ret.has_expr) {
-            da_push(&out->body, (Statement){.type = ST_RETURN_EMPTY}, arena);
-            return true;
-        } else {
-            Value value = {0};
-            if (!generate_expr(tree, &st->ret.return_expr, &value, out, strs, arena)) return false;
-            Statement st = (Statement){.type = ST_RETURN, .ret = {value}};
-            da_push(&out->body, st, arena);
-            return true;
-        }
-    }
-    case AST_LET: {
-        Value variable_value = {0};
-        if (!generate_expr(tree, &st->let.value, &variable_value, out, strs, arena)) return false;
-        TempValueIndex place = out->max_temps++;
-        define_sym(&out->scopes, st->let.name, (Value){.type = VT_TEMP, .temp = place}, arena);
-        Statement st = {
-            .type = ST_ASSIGN,
-            .assign = {.place = (Value){.type = VT_TEMP, .temp = place}, .value = variable_value},
-        };
-        da_push(&out->body, st, arena);
-        return true;
-    }
-    case AST_ASSIGN: {
-        Value variable_value_new = {0};
-        if (!generate_expr(tree, &st->assign.value, &variable_value_new, out, strs, arena)) return false;
-        Sym *p;
-        if (!lookup_sym(&out->scopes, st->assign.name, &p)) {
-            log_diagnostic(LL_ERROR, "Tried to reassign an unknown variable");
-            report_error(st->begin, tree->source.src.items, tree->source.name);
-            return false;
-        }
-        Statement st = {
-            .type = ST_ASSIGN,
-            .assign = {.place = p->value, .value = variable_value_new},
-        };
-        da_push(&out->body, st, arena);
-        return true;
-    }
-    case AST_CALL: {
-        InputArgs args = {0};
-        for (size_t i = 0; i < st->call.args.count; i++) {
-            Value v = {0};
-            if (!generate_expr(tree, &st->call.args.items[i], &v, out, strs, arena)) return false;
-            da_push(&args, v, arena);
-        }
-        Statement call_st = {.type = ST_CALL, .call = {.name = st->call.name, .args = args}};
-        da_push(&out->body, call_st, arena);
-        return true;
-    }
-    case AST_IF: {
-        Value v = {0};
-        if (!generate_expr(tree, &st->if_st.cond, &v, out, strs, arena)) return false;
-        uint64_t jump_over = out->label_count++;
-        Statement jump_st = {.type = ST_JZ, .jz = {.cond = v, .to = jump_over}};
-        da_push(&out->body, jump_st, arena);
-        push_scope(&out->scopes, arena);
-        for (size_t i = 0; i < st->if_st.block.count; i++) {
-            if (!generate_statement(tree, &st->if_st.block.items[i], out, strs, arena)) return false;
-        }
-        Statement label_st = {
-            .type = ST_LABEL,
-            .label = jump_over,
-        };
-        da_push(&out->body, label_st, arena);
-        pop_scope(&out->scopes);
-        return true;
-    }
-    case AST_WHILE: {
-        uint64_t header = out->label_count++;
-        uint64_t over = out->label_count++;
-        Statement header_st = {
-            .type = ST_LABEL,
-            .label = header,
-        };
-        Statement over_st = {
-            .type = ST_LABEL,
-            .label = over,
-        };
-        da_push(&out->body, header_st, arena);
-        Value v = {0};
-        if (!generate_expr(tree, &st->while_st.cond, &v, out, strs, arena)) return false;
-        Statement jump_st = {.type = ST_JZ, .jz = {.cond = v, .to = over}};
-        da_push(&out->body, jump_st, arena);
-        push_scope(&out->scopes, arena);
-        for (size_t i = 0; i < st->while_st.block.count; i++) {
-            if (!generate_statement(tree, &st->while_st.block.items[i], out, strs, arena)) return false;
-        }
-        Statement jump_back_st = {.type = ST_JMP, .jmp = header};
-        da_push(&out->body, jump_back_st, arena);
-        da_push(&out->body, over_st, arena);
-        pop_scope(&out->scopes);
-        return true;
-    }
-    case AST_ASM: {
-        Statement s = {.type = ST_ASM, .asm = st->asm};
-        da_push(&out->body, s, arena);
-        return true;
-    }
+    case AST_RETURN: return generate_return_st(tree, out, st, strs, arena);
+    case AST_LET: return generate_let_st(tree, out, st, strs, arena);
+    case AST_ASSIGN: return generate_assign_st(tree, out, st, strs, arena);
+    case AST_CALL: return generate_call_st(tree, out, st, strs, arena);
+    case AST_IF: return generate_if_st(tree, out, st, strs, arena);
+    case AST_WHILE: return generate_while_st(tree, out, st, strs, arena);
+    case AST_ASM: return generate_asm_st(tree, out, st, strs, arena);
     }
     UNREACHABLE("This shouldn't ever be reached, so all statements should early return from their case in "
                 "the switch "
@@ -366,4 +285,113 @@ void dump_ir(const Module *mod) {
 
         printf("}\n");
     }
+}
+
+static bool generate_return_st(const AstRoot *tree, Function *out, const AstStatement *st, StringPool *strs,
+                               Arena *arena) {
+    if (!st->ret.has_expr) {
+        da_push(&out->body, (Statement){.type = ST_RETURN_EMPTY}, arena);
+        return true;
+    } else {
+        Value value = {0};
+        if (!generate_expr(tree, &st->ret.return_expr, &value, out, strs, arena)) return false;
+        Statement st = (Statement){.type = ST_RETURN, .ret = {value}};
+        da_push(&out->body, st, arena);
+        return true;
+    }
+}
+static bool generate_let_st(const AstRoot *tree, Function *out, const AstStatement *st, StringPool *strs,
+                            Arena *arena) {
+    Value variable_value = {0};
+    if (!generate_expr(tree, &st->let.value, &variable_value, out, strs, arena)) return false;
+    TempValueIndex place = out->max_temps++;
+    define_sym(&out->scopes, st->let.name, (Value){.type = VT_TEMP, .temp = place}, arena);
+    Statement ir_st = {
+        .type = ST_ASSIGN,
+        .assign = {.place = (Value){.type = VT_TEMP, .temp = place}, .value = variable_value},
+    };
+    da_push(&out->body, ir_st, arena);
+    return true;
+}
+static bool generate_assign_st(const AstRoot *tree, Function *out, const AstStatement *st, StringPool *strs,
+                               Arena *arena) {
+    Value variable_value_new = {0};
+    if (!generate_expr(tree, &st->assign.value, &variable_value_new, out, strs, arena)) return false;
+    Sym *p;
+    if (!lookup_sym(&out->scopes, st->assign.name, &p)) {
+        log_diagnostic(LL_ERROR, "Tried to reassign an unknown variable");
+        report_error(st->begin, tree->source.src.items, tree->source.name);
+        return false;
+    }
+    Statement ir_st = {
+        .type = ST_ASSIGN,
+        .assign = {.place = p->value, .value = variable_value_new},
+    };
+    da_push(&out->body, ir_st, arena);
+    return true;
+}
+static bool generate_call_st(const AstRoot *tree, Function *out, const AstStatement *st, StringPool *strs,
+                             Arena *arena) {
+    InputArgs args = {0};
+    for (size_t i = 0; i < st->call.args.count; i++) {
+        Value v = {0};
+        if (!generate_expr(tree, &st->call.args.items[i], &v, out, strs, arena)) return false;
+        da_push(&args, v, arena);
+    }
+    Statement call_st = {.type = ST_CALL, .call = {.name = st->call.name, .args = args}};
+    da_push(&out->body, call_st, arena);
+    return true;
+}
+static bool generate_if_st(const AstRoot *tree, Function *out, const AstStatement *st, StringPool *strs, Arena *arena) {
+    Value v = {0};
+    if (!generate_expr(tree, &st->if_st.cond, &v, out, strs, arena)) return false;
+    uint64_t jump_over = out->label_count++;
+    Statement jump_st = {.type = ST_JZ, .jz = {.cond = v, .to = jump_over}};
+    da_push(&out->body, jump_st, arena);
+    push_scope(&out->scopes, arena);
+    for (size_t i = 0; i < st->if_st.block.count; i++) {
+        if (!generate_statement(tree, &st->if_st.block.items[i], out, strs, arena)) return false;
+    }
+    Statement label_st = {
+        .type = ST_LABEL,
+        .label = jump_over,
+    };
+    da_push(&out->body, label_st, arena);
+    pop_scope(&out->scopes);
+    return true;
+}
+static bool generate_while_st(const AstRoot *tree, Function *out, const AstStatement *st, StringPool *strs,
+                              Arena *arena) {
+    uint64_t header = out->label_count++;
+    uint64_t over = out->label_count++;
+    Statement header_st = {
+        .type = ST_LABEL,
+        .label = header,
+    };
+    Statement over_st = {
+        .type = ST_LABEL,
+        .label = over,
+    };
+    da_push(&out->body, header_st, arena);
+    Value v = {0};
+    if (!generate_expr(tree, &st->while_st.cond, &v, out, strs, arena)) return false;
+    Statement jump_st = {.type = ST_JZ, .jz = {.cond = v, .to = over}};
+    da_push(&out->body, jump_st, arena);
+    push_scope(&out->scopes, arena);
+    for (size_t i = 0; i < st->while_st.block.count; i++) {
+        if (!generate_statement(tree, &st->while_st.block.items[i], out, strs, arena)) return false;
+    }
+    Statement jump_back_st = {.type = ST_JMP, .jmp = header};
+    da_push(&out->body, jump_back_st, arena);
+    da_push(&out->body, over_st, arena);
+    pop_scope(&out->scopes);
+    return true;
+}
+static bool generate_asm_st(const AstRoot *tree, Function *out, const AstStatement *st, StringPool *strs,
+                            Arena *arena) {
+    (void) strs;
+    (void) tree;
+    Statement s = {.type = ST_ASM, .asm = st->asm};
+    da_push(&out->body, s, arena);
+    return true;
 }
