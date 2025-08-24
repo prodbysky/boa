@@ -68,7 +68,6 @@ static bool generate_nasm_function(FILE *sink, const Function *func) {
     return true;
 }
 
-
 static bool generate_nasm_statement(FILE *sink, const Statement *st) {
     switch (st->type) {
     case ST_RETURN: {
@@ -127,8 +126,7 @@ static bool generate_nasm_statement(FILE *sink, const Statement *st) {
 }
 
 static void emit_return_some(FILE *sink, const Statement *ret) {
-    ASSERT(ret->type == ST_RETURN,
-           "This function should only be called when the type of the statement is ST_RETURN");
+    ASSERT(ret->type == ST_RETURN, "This function should only be called when the type of the statement is ST_RETURN");
     move_value_into_register(sink, "rax", &ret->ret.value);
     fprintf(sink, "  jmp ret%ld\n", f_count);
 }
@@ -180,8 +178,7 @@ static void emit_div(FILE *sink, const Statement *st) {
 }
 
 static void emit_assign(FILE *sink, const Statement *st) {
-    ASSERT(st->type == ST_ASSIGN,
-           "This function should only be called when the type of the statement is ST_ASSIGN");
+    ASSERT(st->type == ST_ASSIGN, "This function should only be called when the type of the statement is ST_ASSIGN");
 
     move_value_into_value(sink, &st->assign.value, &st->assign.place);
 }
