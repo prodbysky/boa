@@ -2,26 +2,26 @@
 #include "../../util.h"
 #include <stdio.h>
 
-static bool generate_function(FILE *sink, const SSAFunction *func);
-static bool generate_statement(FILE *sink, const SSAStatement *st);
+static bool generate_nasm_function(FILE *sink, const Function *func);
+static bool generate_nasm_statement(FILE *sink, const Statement *st);
 
-static void emit_return_some(FILE *sink, const SSAStatement *ret);
-static void emit_return_none(FILE *sink, const SSAStatement *ret_none);
+static void emit_return_some(FILE *sink, const Statement *ret);
+static void emit_return_none(FILE *sink, const Statement *ret_none);
 
-static void emit_add(FILE *sink, const SSAStatement *st);
-static void emit_sub(FILE *sink, const SSAStatement *st);
-static void emit_imul(FILE *sink, const SSAStatement *st);
-static void emit_div(FILE *sink, const SSAStatement *st);
-static void emit_assign(FILE *sink, const SSAStatement *st);
-static void emit_call(FILE *sink, const SSAStatement *st);
+static void emit_add(FILE *sink, const Statement *st);
+static void emit_sub(FILE *sink, const Statement *st);
+static void emit_imul(FILE *sink, const Statement *st);
+static void emit_div(FILE *sink, const Statement *st);
+static void emit_assign(FILE *sink, const Statement *st);
+static void emit_call(FILE *sink, const Statement *st);
 
-static void emit_add_reg_value(FILE *sink, const char *reg, const SSAValue *value);
-static void emit_sub_reg_value(FILE *sink, const char *reg, const SSAValue *value);
-static void emit_imul_reg_value(FILE *sink, const char *reg, const SSAValue *value);
-static void move_value_into_register(FILE *sink, const char *reg, const SSAValue *value);
-static void move_value_into_value(FILE *sink, const SSAValue *from, const SSAValue *into);
+static void emit_add_reg_value(FILE *sink, const char *reg, const Value *value);
+static void emit_sub_reg_value(FILE *sink, const char *reg, const Value *value);
+static void emit_imul_reg_value(FILE *sink, const char *reg, const Value *value);
+static void move_value_into_register(FILE *sink, const char *reg, const Value *value);
+static void move_value_into_value(FILE *sink, const Value *from, const Value *into);
 
-static void value_asm_repr(FILE *sink, const SSAValue *value);
+static void value_asm_repr(FILE *sink, const Value *value);
 
 static size_t f_count = 0;
 
@@ -29,7 +29,7 @@ const char *idx_to_reg[] = {
     "rdi", "rsi", "rdx", "rcx", "r8", "r9",
 };
 
-bool nasm_x86_64_linux_generate_file(FILE *sink, const SSAModule *mod) {
+bool nasm_x86_64_linux_generate_file(FILE *sink, const Module *mod) {
 
     // prelude of some sorts
     fprintf(sink, "section .text\n");
@@ -41,7 +41,7 @@ bool nasm_x86_64_linux_generate_file(FILE *sink, const SSAModule *mod) {
     fprintf(sink, "  mov rdi, rsi\n");
     fprintf(sink, "  syscall\n");
 
-    for (size_t i = 0; i < mod->functions.count; i++) { generate_function(sink, &mod->functions.items[i]); }
+    for (size_t i = 0; i < mod->functions.count; i++) { generate_nasm_function(sink, &mod->functions.items[i]); }
 
     fprintf(sink, "section .data\n");
     for (size_t i = 0; i < mod->strings.count; i++) {
@@ -51,13 +51,13 @@ bool nasm_x86_64_linux_generate_file(FILE *sink, const SSAModule *mod) {
     return true;
 }
 
-static bool generate_function(FILE *sink, const SSAFunction *func) {
+static bool generate_nasm_function(FILE *sink, const Function *func) {
     fprintf(sink, STR_FMT ":\n", STR_ARG(func->name));
     fprintf(sink, "  push rbp\n");
     fprintf(sink, "  mov rbp, rsp\n");
     fprintf(sink, "  sub rsp, %ld\n", func->max_temps * 8);
 
-    for (size_t i = 0; i < func->body.count; i++) { generate_statement(sink, &func->body.items[i]); }
+    for (size_t i = 0; i < func->body.count; i++) { generate_nasm_statement(sink, &func->body.items[i]); }
 
     fprintf(sink, "ret%ld:\n", f_count);
     fprintf(sink, "  mov rsp, rbp\n");
@@ -69,55 +69,55 @@ static bool generate_function(FILE *sink, const SSAFunction *func) {
 }
 
 
-static bool generate_statement(FILE *sink, const SSAStatement *st) {
+static bool generate_nasm_statement(FILE *sink, const Statement *st) {
     switch (st->type) {
-    case SSAST_RETURN: {
+    case ST_RETURN: {
         emit_return_some(sink, st);
         return true;
     }
-    case SSAST_RETURN_EMPTY: {
+    case ST_RETURN_EMPTY: {
         emit_return_none(sink, st);
         return true;
     }
-    case SSAST_ADD: {
+    case ST_ADD: {
         emit_add(sink, st);
         return true;
     }
-    case SSAST_SUB: {
+    case ST_SUB: {
         emit_sub(sink, st);
         return true;
     }
-    case SSAST_MUL: {
+    case ST_MUL: {
         emit_imul(sink, st);
         return true;
     }
-    case SSAST_DIV: {
+    case ST_DIV: {
         emit_div(sink, st);
         return true;
     }
-    case SSAST_ASSIGN: {
+    case ST_ASSIGN: {
         emit_assign(sink, st);
         return true;
     }
-    case SSAST_CALL: {
+    case ST_CALL: {
         emit_call(sink, st);
         return true;
     }
-    case SSAST_LABEL: {
+    case ST_LABEL: {
         fprintf(sink, "  .l%zu:\n", st->label);
         return true;
     }
-    case SSAST_JZ: {
+    case ST_JZ: {
         move_value_into_register(sink, "rax", &st->jz.cond);
         fprintf(sink, "  cmp rax, 0\n");
         fprintf(sink, "  jz .l%zu\n", st->jz.to);
         return true;
     }
-    case SSAST_JMP: {
+    case ST_JMP: {
         fprintf(sink, "  jmp .l%zu\n", st->jmp);
         return true;
     }
-    case SSAST_ASM: {
+    case ST_ASM: {
         fprintf(sink, STR_FMT "\n", STR_ARG(st->asm));
         return true;
     }
@@ -126,52 +126,52 @@ static bool generate_statement(FILE *sink, const SSAStatement *st) {
     return false;
 }
 
-static void emit_return_some(FILE *sink, const SSAStatement *ret) {
-    ASSERT(ret->type == SSAST_RETURN,
-           "This function should only be called when the type of the statement is SSAST_RETURN");
+static void emit_return_some(FILE *sink, const Statement *ret) {
+    ASSERT(ret->type == ST_RETURN,
+           "This function should only be called when the type of the statement is ST_RETURN");
     move_value_into_register(sink, "rax", &ret->ret.value);
     fprintf(sink, "  jmp ret%ld\n", f_count);
 }
 
-static void emit_return_none(FILE *sink, const SSAStatement *ret_none) {
-    ASSERT(ret_none->type == SSAST_RETURN_EMPTY,
-           "This function should only be called when the type of the statement is SSAST_RETURN_EMPTY");
+static void emit_return_none(FILE *sink, const Statement *ret_none) {
+    ASSERT(ret_none->type == ST_RETURN_EMPTY,
+           "This function should only be called when the type of the statement is ST_RETURN_EMPTY");
     fprintf(sink, "  jmp ret%ld\n", f_count);
 }
 
-static void emit_add(FILE *sink, const SSAStatement *st) {
-    ASSERT(st->type == SSAST_ADD, "This function should only be called when the type of the statement is SSAST_ADD");
-    ASSERT(st->binop.result.type == SSAVT_TEMP, "we can't add to a constant");
+static void emit_add(FILE *sink, const Statement *st) {
+    ASSERT(st->type == ST_ADD, "This function should only be called when the type of the statement is ST_ADD");
+    ASSERT(st->binop.result.type == VT_TEMP, "we can't add to a constant");
     move_value_into_register(sink, "rax", &st->binop.l);
 
     emit_add_reg_value(sink, "rax", &st->binop.r);
     fprintf(sink, "  mov qword [rbp - %ld], rax\n", (st->binop.result.temp + 1) * 8);
 }
 
-static void emit_sub(FILE *sink, const SSAStatement *st) {
-    ASSERT(st->type == SSAST_SUB, "This function should only be called when the type of the statement is SSAST_SUB");
-    ASSERT(st->binop.result.type == SSAVT_TEMP, "we can't sub a constant");
+static void emit_sub(FILE *sink, const Statement *st) {
+    ASSERT(st->type == ST_SUB, "This function should only be called when the type of the statement is ST_SUB");
+    ASSERT(st->binop.result.type == VT_TEMP, "we can't sub a constant");
     move_value_into_register(sink, "rax", &st->binop.l);
 
     emit_sub_reg_value(sink, "rax", &st->binop.r);
     fprintf(sink, "  mov qword [rbp - %ld], rax\n", (st->binop.result.temp + 1) * 8);
 }
 
-static void emit_imul(FILE *sink, const SSAStatement *st) {
-    ASSERT(st->type == SSAST_MUL, "This function should only be called when the type of the statement is SSAST_MUL");
-    ASSERT(st->binop.result.type == SSAVT_TEMP, "we can't mul a constant");
+static void emit_imul(FILE *sink, const Statement *st) {
+    ASSERT(st->type == ST_MUL, "This function should only be called when the type of the statement is ST_MUL");
+    ASSERT(st->binop.result.type == VT_TEMP, "we can't mul a constant");
     move_value_into_register(sink, "rax", &st->binop.l);
 
     emit_imul_reg_value(sink, "rax", &st->binop.r);
     fprintf(sink, "  mov qword [rbp - %ld], rax\n", (st->binop.result.temp + 1) * 8);
 }
 
-static void emit_div(FILE *sink, const SSAStatement *st) {
+static void emit_div(FILE *sink, const Statement *st) {
     // ugh x86_64 is so weird
     // rax low bits
     // rdi high bits
-    ASSERT(st->type == SSAST_DIV, "This function should only be called when the type of the statement is SSAST_DIV");
-    ASSERT(st->binop.result.type == SSAVT_TEMP, "we can't div a constant");
+    ASSERT(st->type == ST_DIV, "This function should only be called when the type of the statement is ST_DIV");
+    ASSERT(st->binop.result.type == VT_TEMP, "we can't div a constant");
     move_value_into_register(sink, "rax", &st->binop.l);
     fprintf(sink, "  xor rdx, rdx\n");
     move_value_into_register(sink, "rcx", &st->binop.r);
@@ -179,15 +179,15 @@ static void emit_div(FILE *sink, const SSAStatement *st) {
     fprintf(sink, "  mov qword [rbp - %ld], rax\n", (st->binop.result.temp + 1) * 8);
 }
 
-static void emit_assign(FILE *sink, const SSAStatement *st) {
-    ASSERT(st->type == SSAST_ASSIGN,
-           "This function should only be called when the type of the statement is SSAST_ASSIGN");
+static void emit_assign(FILE *sink, const Statement *st) {
+    ASSERT(st->type == ST_ASSIGN,
+           "This function should only be called when the type of the statement is ST_ASSIGN");
 
     move_value_into_value(sink, &st->assign.value, &st->assign.place);
 }
 
-static void emit_call(FILE *sink, const SSAStatement *st) {
-    ASSERT(st->type == SSAST_CALL, "This function should only be called when the type of the statement is SSAST_CALL");
+static void emit_call(FILE *sink, const Statement *st) {
+    ASSERT(st->type == ST_CALL, "This function should only be called when the type of the statement is ST_CALL");
 
     // here the ir generator or something else up top already checked that the function exists
     // and enough of the arguments are provided so now we just poop
@@ -219,7 +219,7 @@ static void emit_call(FILE *sink, const SSAStatement *st) {
     }
 }
 
-static void move_value_into_value(FILE *sink, const SSAValue *from, const SSAValue *into) {
+static void move_value_into_value(FILE *sink, const Value *from, const Value *into) {
     move_value_into_register(sink, "rax", from);
 
     fprintf(sink, "  mov ");
@@ -227,45 +227,45 @@ static void move_value_into_value(FILE *sink, const SSAValue *from, const SSAVal
     fprintf(sink, ", rax\n");
 }
 
-static void emit_add_reg_value(FILE *sink, const char *reg, const SSAValue *value) {
+static void emit_add_reg_value(FILE *sink, const char *reg, const Value *value) {
     fprintf(sink, "  add %s, ", reg);
     value_asm_repr(sink, value);
     fprintf(sink, "\n");
 }
 
-static void emit_sub_reg_value(FILE *sink, const char *reg, const SSAValue *value) {
+static void emit_sub_reg_value(FILE *sink, const char *reg, const Value *value) {
     fprintf(sink, "  sub %s, ", reg);
     value_asm_repr(sink, value);
     fprintf(sink, "\n");
 }
 
-static void emit_imul_reg_value(FILE *sink, const char *reg, const SSAValue *value) {
+static void emit_imul_reg_value(FILE *sink, const char *reg, const Value *value) {
     fprintf(sink, "  imul %s, ", reg);
     value_asm_repr(sink, value);
     fprintf(sink, "\n");
 }
 
-static void move_value_into_register(FILE *sink, const char *reg, const SSAValue *value) {
+static void move_value_into_register(FILE *sink, const char *reg, const Value *value) {
     fprintf(sink, "  mov %s, ", reg);
     value_asm_repr(sink, value);
     fprintf(sink, "\n");
 }
 
-static void value_asm_repr(FILE *sink, const SSAValue *value) {
+static void value_asm_repr(FILE *sink, const Value *value) {
     switch (value->type) {
-    case SSAVT_CONST: {
+    case VT_CONST: {
         fprintf(sink, "%ld", value->constant);
         break;
     }
-    case SSAVT_TEMP: {
+    case VT_TEMP: {
         fprintf(sink, "qword [rbp - %ld]", (value->temp + 1) * 8);
         break;
     }
-    case SSAVT_STRING: {
+    case VT_STRING: {
         fprintf(sink, "str_%zu", (value->string_index));
         break;
     }
-    case SSAVT_ARG: {
+    case VT_ARG: {
         if (value->arg_index < 6) {
             fprintf(sink, "%s", idx_to_reg[(value->arg_index)]);
         } else {

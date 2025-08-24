@@ -4,6 +4,6 @@
 #include "../ir/ssa.h"
 #include <stdio.h>
 
-bool nasm_x86_64_linux_generate_file(FILE* sink, const SSAModule* mod);
+bool nasm_x86_64_linux_generate_file(FILE* sink, const Module* mod);
 
 #endif

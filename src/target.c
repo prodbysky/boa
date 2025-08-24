@@ -5,7 +5,7 @@
 #include "util.h"
 #include <stdio.h>
 
-static bool linux_nasm_gen(char *root_path, const SSAModule *mod, Arena* arena);
+static bool linux_nasm_gen(char *root_path, const Module *mod, Arena* arena);
 static bool linux_nasm_assemble(char *root_path, Arena* arena);
 static bool linux_nasm_link(char *root_path, Arena* arena);
 static void linux_nasm_cleanup(char *root_path, Arena* arena);
@@ -40,7 +40,7 @@ const char *target_enum_to_str(TargetKind kind) {
 }
 
 
-static bool linux_nasm_gen(char *root_path, const SSAModule *mod, Arena* arena) {
+static bool linux_nasm_gen(char *root_path, const Module *mod, Arena* arena) {
     Path p = path_from_cstr(root_path, arena);
     path_add_ext(&p, "asm", arena);
     char *p_c = path_to_cstr(&p, arena);

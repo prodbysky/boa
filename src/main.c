@@ -51,8 +51,8 @@ int main(int argc, char **argv) {
         goto defer;
     }
 
-    SSAModule mod = {0};
-    if (!generate_ssa_module(&root, &mod, &arena)) {
+    Module mod = {0};
+    if (!generate_module(&root, &mod, &arena)) {
         result = 1;
         goto defer;
     }

@@ -10,7 +10,7 @@ typedef enum {
 typedef struct {
     const char *name;
     TargetKind tk;
-    bool (*generate)(char *root_path, const SSAModule *mod, Arena* arena);
+    bool (*generate)(char *root_path, const Module *mod, Arena* arena);
     bool (*assemble)(char *root_path, Arena* arena);
     bool (*link)(char *root_path, Arena* arena);
     void (*cleanup)(char *root_path, Arena* arena);

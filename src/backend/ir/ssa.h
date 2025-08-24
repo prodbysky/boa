@@ -1,23 +1,23 @@
 #ifndef SSA_H_
 #define SSA_H_
 
+#include "../../frontend/parser.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "../../frontend/parser.h"
 
 typedef enum {
-    SSAVT_CONST,
-    SSAVT_TEMP,
-    SSAVT_ARG,
-    SSAVT_STRING,
-} SSAValueType;
+    VT_CONST,
+    VT_TEMP,
+    VT_ARG,
+    VT_STRING,
+} ValueType;
 
 typedef uint64_t ConstValue;
 typedef uint64_t TempValueIndex;
 
 typedef struct {
-    SSAValueType type;
+    ValueType type;
     union {
         ConstValue constant;
         TempValueIndex temp;
@@ -25,116 +25,120 @@ typedef struct {
         // str%zu... db ..., 0
         uint64_t string_index, arg_index;
     };
-} SSAValue;
+} Value;
 
 typedef enum {
-    SSAST_RETURN,
-    SSAST_RETURN_EMPTY,
-    SSAST_ADD,
-    SSAST_SUB,
-    SSAST_MUL,
-    SSAST_DIV,
-    SSAST_ASSIGN,
-    SSAST_CALL,
-    SSAST_LABEL, 
-    SSAST_JZ,
-    SSAST_JMP,
-    SSAST_ASM,
-} SSAStatementType;
+    ST_RETURN,
+    ST_RETURN_EMPTY,
+    ST_ADD,
+    ST_SUB,
+    ST_MUL,
+    ST_DIV,
+    ST_ASSIGN,
+    ST_CALL,
+    ST_LABEL,
+    ST_JZ,
+    ST_JMP,
+    ST_ASM,
+} StatementType;
 
 typedef struct {
-    SSAValue* items;
+    Value *items;
     size_t count;
     size_t capacity;
-} SSAInputArgs;
+} InputArgs;
 
 typedef struct {
-    SSAStatementType type;
+    StatementType type;
     union {
         struct {
-            SSAValue value;
+            Value value;
         } ret;
         struct {
-            SSAValue l;
-            SSAValue r;
-            SSAValue result;
+            Value l;
+            Value r;
+            Value result;
         } binop;
         struct {
-            SSAValue place;
-            SSAValue value;
+            Value place;
+            Value value;
         } assign;
         struct {
             StringView name;
             bool returns;
-            SSAValue return_v;
-            SSAInputArgs args;
+            Value return_v;
+            InputArgs args;
         } call;
         struct {
-            SSAValue cond;
+            Value cond;
             uint64_t to;
         } jz;
         uint64_t jmp, label;
         StringView asm;
     };
-} SSAStatement;
+} Statement;
 
 typedef struct {
-    SSAStatement* items;
+    Statement *items;
     size_t count;
     size_t capacity;
-} SSAFunctionBody;
+} FunctionBody;
 
 typedef struct {
     StringView name;
-    SSAValue value;
-} NameValuePair;
+    Value value;
+} Sym;
 
 typedef struct {
-    NameValuePair* items;
+    Sym *items;
     size_t count;
     size_t capacity;
-} SSANameToValue;
+} SymTable;
 
 typedef struct {
-    SSANameToValue* items;
+    SymTable *items;
     size_t count;
     size_t capacity;
-} SSABadBoyStack;
+} ScopeStack;
 
-bool get_if_known_variable(SSABadBoyStack *vals, StringView view, NameValuePair **out);
-bool add_variable(SSABadBoyStack* stack, NameValuePair pair, Arena* arena);
+void push_scope(ScopeStack *stack, Arena *arena);
+void pop_scope(ScopeStack *stack);
+bool define_sym(ScopeStack *stack, StringView name, Value value, Arena *arena);
+bool lookup_sym(ScopeStack *stack, StringView name, Sym **out_value);
 
 typedef struct {
     StringView name;
-    SSAFunctionBody body;
-    size_t max_temps;
     size_t arg_count;
-    SSABadBoyStack scopes;
+    FunctionBody body;
+    ScopeStack scopes;
+    size_t max_temps;
     uint64_t label_count;
-} SSAFunction;
+} Function;
 
 typedef struct {
-    SSAFunction* items;
+    Function *items;
     size_t count;
     size_t capacity;
-} SSAFunctions;
+} Functions;
 
 typedef struct {
-    StringView* items;
+    StringView *items;
     size_t count;
     size_t capacity;
-} SSAStrings;
+} StringPool;
 
 typedef struct {
-    SSAFunctions functions;
-    SSAStrings strings;
-} SSAModule;
+    Functions functions;
+    StringPool strings;
+} Module;
 
-void dump_ir(const SSAModule* mod);
+void dump_ir(const Module *mod);
 
-bool generate_ssa_module(const AstRoot *ast, SSAModule *out, Arena* arena);
-bool generate_ssa_function(SSAFunction* out, const AstFunction* ast_func, Arena* arena, SSAStrings* strs, const AstRoot* tree);
-bool generate_ssa_statement(const AstRoot *tree, const AstStatement *st, SSAFunction *out, SSAStrings* strs, Arena* arena);
-bool generate_ssa_expr(const AstRoot *tree, const AstExpression *expr, SSAValue *out_value, SSAFunction *out, SSAStrings* strs, Arena* arena);
+bool generate_module(const AstRoot *ast, Module *out, Arena *arena);
+bool generate_function(Function *out, const AstFunction *ast_func, Arena *arena, StringPool *strs,
+                           const AstRoot *tree);
+bool generate_statement(const AstRoot *tree, const AstStatement *st, Function *out, StringPool *strs, Arena *arena);
+bool generate_expr(const AstRoot *tree, const AstExpression *expr, Value *out_value, Function *out,
+                       StringPool *strs, Arena *arena);
 
 #endif
