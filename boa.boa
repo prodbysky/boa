@@ -5,16 +5,19 @@ def main() {
     fill_buffer(fd, buffer);
     let buffer_len = strlen(buffer);
 
-    let one_number_char = index_string(buffer, 0);
-    if one_number_char == 49 {
-        return 0;
-    }
-    return 1;
+    let new_line = " ";
+    replace_char(new_line, 0, 10);
 
     let counter = 0;
 
-    while buffer_len - 1 - counter {
-        counter = counter + 1;
+    return 0;
+}
+
+def isdigit(buffer, counter) {
+    if index_string(buffer, counter) >= 30 {
+        if index_string(buffer, counter) <= 39 {
+            return 1;
+        }
     }
 
     return 0;
@@ -26,6 +29,14 @@ def deref(pointer) {
         mov rdx, 0
     );
     return;
+}
+
+def replace_char(pointer, index, new_char) {
+    __asm__(
+        add rdi, rsi,
+        mov [rdi], dl
+    );
+    return 0;
 }
 
 def index_string(pointer, index) {
