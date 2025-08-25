@@ -148,7 +148,7 @@ bool parser_expect_and_skip(Parser *parser, TokenType type);
     primary → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
 */
 bool parser_parse_expr(Parser *parser, AstExpression *out);
-// bool parser_parse_eq(Parser *parser, AstExpression *out);
+bool parser_parse_eq(Parser *parser, AstExpression *out);
 bool parser_parse_cmp(Parser *parser, AstExpression *out);
 bool parser_parse_term(Parser *parser, AstExpression *out);
 bool parser_parse_factor(Parser *parser, AstExpression *out);

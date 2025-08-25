@@ -117,6 +117,10 @@ bool generate_expr(const AstRoot *tree, const AstExpression *expr, Value *out_va
         case OT_DIV: st.type = ST_DIV; break;
         case OT_LT: st.type = ST_CMP_LT; break;
         case OT_MT: st.type = ST_CMP_MT; break;
+        case OT_LTE: st.type = ST_CMP_LTE; break;
+        case OT_MTE: st.type = ST_CMP_MTE; break;
+        case OT_EQ: st.type = ST_CMP_EQ; break;
+        case OT_NEQ: st.type = ST_CMP_NEQ; break;
         }
         da_push(&out->body, st, arena);
         *out_value = result;
@@ -281,6 +285,54 @@ void dump_ir(const Module *mod) {
                 printf("@%zu:", st->label);
                 break;
             }
+            case ST_CMP_LT: {
+                ir_value_repr(&st->binop.result);
+                printf(" <- ");
+                ir_value_repr(&st->binop.l);
+                printf(" < ");
+                ir_value_repr(&st->binop.r);
+                break;
+            }
+            case ST_CMP_LTE: {
+                ir_value_repr(&st->binop.result);
+                printf(" <- ");
+                ir_value_repr(&st->binop.l);
+                printf(" <= ");
+                ir_value_repr(&st->binop.r);
+                break;
+            }
+            case ST_CMP_MT: {
+                ir_value_repr(&st->binop.result);
+                printf(" <- ");
+                ir_value_repr(&st->binop.l);
+                printf(" > ");
+                ir_value_repr(&st->binop.r);
+                break;
+            }
+            case ST_CMP_MTE: {
+                ir_value_repr(&st->binop.result);
+                printf(" <- ");
+                ir_value_repr(&st->binop.l);
+                printf(" >= ");
+                ir_value_repr(&st->binop.r);
+                break;
+            }
+            case ST_CMP_EQ: {
+                ir_value_repr(&st->binop.result);
+                printf(" <- ");
+                ir_value_repr(&st->binop.l);
+                printf(" == ");
+                ir_value_repr(&st->binop.r);
+                break;
+            }
+            case ST_CMP_NEQ: {
+                ir_value_repr(&st->binop.result);
+                printf(" <- ");
+                ir_value_repr(&st->binop.l);
+                printf(" == ");
+                ir_value_repr(&st->binop.r);
+                break;
+            }
             }
             printf("\n");
         }
@@ -391,8 +443,8 @@ static bool generate_while_st(const AstRoot *tree, Function *out, const AstState
 }
 static bool generate_asm_st(const AstRoot *tree, Function *out, const AstStatement *st, StringPool *strs,
                             Arena *arena) {
-    (void) strs;
-    (void) tree;
+    (void)strs;
+    (void)tree;
     Statement s = {.type = ST_ASM, .asm = st->asm};
     da_push(&out->body, s, arena);
     return true;

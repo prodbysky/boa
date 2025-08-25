@@ -12,10 +12,15 @@ static void emit_add(FILE *sink, const Statement *st);
 static void emit_sub(FILE *sink, const Statement *st);
 static void emit_imul(FILE *sink, const Statement *st);
 static void emit_div(FILE *sink, const Statement *st);
-static void emit_cmp_lt(FILE *sink, const Statement *st);
-static void emit_cmp_mt(FILE *sink, const Statement *st);
 static void emit_assign(FILE *sink, const Statement *st);
 static void emit_call(FILE *sink, const Statement *st);
+
+static void emit_cmp_lt(FILE *sink, const Statement *st);
+static void emit_cmp_mt(FILE *sink, const Statement *st);
+static void emit_cmp_lte(FILE *sink, const Statement *st);
+static void emit_cmp_mte(FILE *sink, const Statement *st);
+static void emit_cmp_eq(FILE *sink, const Statement *st);
+static void emit_cmp_neq(FILE *sink, const Statement *st);
 
 static void emit_add_reg_value(FILE *sink, const char *reg, const Value *value);
 static void emit_sub_reg_value(FILE *sink, const char *reg, const Value *value);
@@ -134,6 +139,36 @@ static bool generate_nasm_statement(FILE *sink, const Statement *st) {
         fprintf(sink, STR_FMT "\n", STR_ARG(st->asm));
         return true;
     }
+    case ST_CMP_LT: {
+        fprintf(sink, "; call\n");
+        emit_cmp_lt(sink, st);
+        return true;
+    }
+    case ST_CMP_MT: {
+        fprintf(sink, "; call\n");
+        emit_cmp_mt(sink, st);
+        return true;
+    }
+    case ST_CMP_LTE: {
+        fprintf(sink, "; call\n");
+        emit_cmp_lte(sink, st);
+        return true;
+    }
+    case ST_CMP_MTE: {
+        fprintf(sink, "; call\n");
+        emit_cmp_mte(sink, st);
+        return true;
+    }
+    case ST_CMP_EQ: {
+        fprintf(sink, "; call\n");
+        emit_cmp_eq(sink, st);
+        return true;
+    }
+    case ST_CMP_NEQ: {
+        fprintf(sink, "; call\n");
+        emit_cmp_neq(sink, st);
+        return true;
+    }
     }
     UNREACHABLE("oh no");
     return false;
@@ -201,11 +236,55 @@ static void emit_cmp_lt(FILE *sink, const Statement *st) {
     value_asm_repr(sink, &st->binop.result);
     fprintf(sink, ", rax");
 }
+
 static void emit_cmp_mt(FILE *sink, const Statement *st) {
     move_value_into_register(sink, "r9", &st->binop.l);
     move_value_into_register(sink, "r10", &st->binop.r);
     fprintf(sink, "  cmp r9, r10\n");
     fprintf(sink, "  setg al\n");
+    fprintf(sink, "  movzx rax, al\n");
+    fprintf(sink, "  mov ");
+    value_asm_repr(sink, &st->binop.result);
+    fprintf(sink, ", rax");
+}
+
+static void emit_cmp_lte(FILE *sink, const Statement *st) {
+    move_value_into_register(sink, "r9", &st->binop.l);
+    move_value_into_register(sink, "r10", &st->binop.r);
+    fprintf(sink, "  cmp r9, r10\n");
+    fprintf(sink, "  setle al\n");
+    fprintf(sink, "  movzx rax, al\n");
+    fprintf(sink, "  mov ");
+    value_asm_repr(sink, &st->binop.result);
+    fprintf(sink, ", rax");
+}
+
+static void emit_cmp_mte(FILE *sink, const Statement *st) {
+    move_value_into_register(sink, "r9", &st->binop.l);
+    move_value_into_register(sink, "r10", &st->binop.r);
+    fprintf(sink, "  cmp r9, r10\n");
+    fprintf(sink, "  setge al\n");
+    fprintf(sink, "  movzx rax, al\n");
+    fprintf(sink, "  mov ");
+    value_asm_repr(sink, &st->binop.result);
+    fprintf(sink, ", rax");
+}
+
+static void emit_cmp_eq(FILE *sink, const Statement *st) {
+    move_value_into_register(sink, "r9", &st->binop.l);
+    move_value_into_register(sink, "r10", &st->binop.r);
+    fprintf(sink, "  cmp r9, r10\n");
+    fprintf(sink, "  sete al\n");
+    fprintf(sink, "  movzx rax, al\n");
+    fprintf(sink, "  mov ");
+    value_asm_repr(sink, &st->binop.result);
+    fprintf(sink, ", rax");
+}
+static void emit_cmp_neq(FILE *sink, const Statement *st) {
+    move_value_into_register(sink, "r9", &st->binop.l);
+    move_value_into_register(sink, "r10", &st->binop.r);
+    fprintf(sink, "  cmp r9, r10\n");
+    fprintf(sink, "  setne al\n");
     fprintf(sink, "  movzx rax, al\n");
     fprintf(sink, "  mov ");
     value_asm_repr(sink, &st->binop.result);

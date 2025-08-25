@@ -6,10 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const OperatorType char_to_op[] = {
-    ['+'] = OT_PLUS, ['-'] = OT_MINUS, ['*'] = OT_MULT, ['/'] = OT_DIV, ['<'] = OT_LT, ['>'] = OT_MT,
-};
-
 static void lex_single_char(Lexer *lexer, Tokens *out, TokenType new) {
     Token t = {.len = 1, .begin = lexer->file.src.items, .type = new};
     da_push(out, t, lexer->arena);
@@ -37,25 +33,11 @@ bool lexer_run(Lexer *lexer, Tokens *out) {
             continue;
         }
 
+        const char *begin = lexer->begin_of_src;
         switch (lexer_peek(lexer, 0)) {
         case 0: UNREACHABLE("The lexer can't be empty in here");
-        case '+':
-        case '-':
-        case '*':
-        case '/':
-        case '<':
-        case '>': {
-            Token t = {0};
-            t.type = TT_OPERATOR;
-            t.len = 1;
-            t.begin = lexer->file.src.items;
-            t.operator= char_to_op[(size_t)lexer_peek(lexer, 0)];
-            da_push(out, t, lexer->arena);
-            lexer_consume(lexer);
-            continue;
-        }
+        // case '+':
         case ';': lex_single_char(lexer, out, TT_SEMICOLON); continue;
-        case '=': lex_single_char(lexer, out, TT_ASSIGN); continue;
         case '{': lex_single_char(lexer, out, TT_OPEN_CURLY); continue;
         case '}': lex_single_char(lexer, out, TT_CLOSE_CURLY); continue;
         case '(': lex_single_char(lexer, out, TT_OPEN_PAREN); continue;
@@ -63,6 +45,112 @@ bool lexer_run(Lexer *lexer, Tokens *out) {
         case ',': lex_single_char(lexer, out, TT_COMMA); continue;
         // TODO: Lex string literals as a token
         case '"': lex_single_char(lexer, out, TT_DOUBLE_QUOTE); continue;
+        case '+': {
+            lexer_consume(lexer);
+            Token t = {0};
+            t.type = TT_OPERATOR;
+            t.len = 1;
+            t.begin = lexer->file.src.items;
+            t.operator= OT_PLUS;
+            da_push(out, t, lexer->arena);
+            continue;
+        }
+        case '-': {
+            lexer_consume(lexer);
+            Token t = {0};
+            t.type = TT_OPERATOR;
+            t.len = 1;
+            t.begin = lexer->file.src.items;
+            t.operator= OT_MINUS;
+            da_push(out, t, lexer->arena);
+            continue;
+        }
+        case '*': {
+            lexer_consume(lexer);
+            Token t = {0};
+            t.type = TT_OPERATOR;
+            t.len = 1;
+            t.begin = lexer->file.src.items;
+            t.operator= OT_MULT;
+            da_push(out, t, lexer->arena);
+            continue;
+        }
+        case '/': {
+            lexer_consume(lexer);
+            Token t = {0};
+            t.type = TT_OPERATOR;
+            t.len = 1;
+            t.begin = lexer->file.src.items;
+            t.operator= OT_DIV;
+            da_push(out, t, lexer->arena);
+            continue;
+        }
+        case '<': {
+            lexer_consume(lexer);
+            Token t = {0};
+            if (!lexer_is_empty(lexer) && lexer_peek(lexer, 0) == '=') {
+                t.len = 2;
+                t.begin = lexer->file.src.items;
+                t.operator= OT_LTE;
+                lexer_consume(lexer);
+            } else {
+                t.len = 1;
+                t.begin = lexer->file.src.items;
+                t.operator= OT_LT;
+            }
+            da_push(out, t, lexer->arena);
+            continue;
+        }
+        case '!': {
+            lexer_consume(lexer);
+            Token t = {0};
+            if (!lexer_is_empty(lexer) && lexer_peek(lexer, 0) == '=') {
+                t.len = 2;
+                t.begin = lexer->file.src.items;
+                t.operator= OT_NEQ;
+                lexer_consume(lexer);
+            } else {
+                log_diagnostic(LL_INFO, "Ok so `!` is not supported yet sadly");
+                report_error(begin, lexer->begin_of_src, lexer->file.name);
+                return false;
+            }
+            da_push(out, t, lexer->arena);
+            continue;
+        }
+        case '>': {
+            lexer_consume(lexer);
+            Token t = {0};
+            t.type = TT_OPERATOR;
+            if (!lexer_is_empty(lexer) && lexer_peek(lexer, 0) == '=') {
+                t.len = 2;
+                t.begin = lexer->file.src.items;
+                t.operator= OT_MTE;
+                lexer_consume(lexer);
+            } else {
+                t.len = 1;
+                t.begin = lexer->file.src.items;
+                t.operator= OT_MT;
+            }
+            da_push(out, t, lexer->arena);
+            continue;
+        }
+        case '=': {
+            lexer_consume(lexer);
+            Token t = {0};
+            if (!lexer_is_empty(lexer) && lexer_peek(lexer, 0) == '=') {
+                t.type = TT_OPERATOR;
+                t.len = 2;
+                t.begin = lexer->file.src.items;
+                t.operator= OT_EQ;
+                lexer_consume(lexer);
+            } else {
+                t.type = TT_ASSIGN;
+                t.len = 1;
+                t.begin = lexer->file.src.items;
+            }
+            da_push(out, t, lexer->arena);
+            continue;
+        }
         default: {
             log_diagnostic(LL_INFO, "Don't know some letter skipping for sake of asm");
             lexer_consume(lexer);

@@ -30,7 +30,7 @@ def index_string(pointer, index) {
         mov rax, [rdi]
         mov rdx, 0
     );
-    return ;
+    return;
 }
 
 def fill_buffer(fd, buffer) {
