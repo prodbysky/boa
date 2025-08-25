@@ -7,7 +7,8 @@
 #include <string.h>
 
 static const OperatorType char_to_op[] = {
-    ['+'] = OT_PLUS, ['-'] = OT_MINUS, ['*'] = OT_MULT, ['/'] = OT_DIV, ['<'] = OT_LT, ['>'] = OT_MT,};
+    ['+'] = OT_PLUS, ['-'] = OT_MINUS, ['*'] = OT_MULT, ['/'] = OT_DIV, ['<'] = OT_LT, ['>'] = OT_MT,
+};
 
 static void lex_single_char(Lexer *lexer, Tokens *out, TokenType new) {
     Token t = {.len = 1, .begin = lexer->file.src.items, .type = new};

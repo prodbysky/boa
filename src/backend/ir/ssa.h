@@ -34,6 +34,8 @@ typedef enum {
     ST_SUB,
     ST_MUL,
     ST_DIV,
+    ST_CMP_MT,
+    ST_CMP_LT,
     ST_ASSIGN,
     ST_CALL,
     ST_LABEL,

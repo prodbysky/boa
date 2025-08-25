@@ -115,6 +115,8 @@ bool generate_expr(const AstRoot *tree, const AstExpression *expr, Value *out_va
         case OT_MINUS: st.type = ST_SUB; break;
         case OT_MULT: st.type = ST_MUL; break;
         case OT_DIV: st.type = ST_DIV; break;
+        case OT_LT: st.type = ST_CMP_LT; break;
+        case OT_MT: st.type = ST_CMP_MT; break;
         }
         da_push(&out->body, st, arena);
         *out_value = result;
