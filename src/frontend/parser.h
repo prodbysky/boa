@@ -144,14 +144,15 @@ bool parser_expect_and_skip(Parser *parser, TokenType type);
     comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
     term → factor ( ( "-" | "+" ) factor )* ;
     factor → unary ( ( "/" | "*" ) unary )* ;
-    unary → ( "!" | "-" ) unary
-    | primary ;
-    primary → NUMBER | STRING | "true" | "false" | "nil"
-    | "(" expression ")" ;
+    unary → ( "!" | "-" ) unary | primary ;
+    primary → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
 */
 bool parser_parse_expr(Parser *parser, AstExpression *out);
-bool parser_parse_factor(Parser *parser, AstExpression *out);
+bool parser_parse_eq(Parser *parser, AstExpression *out);
+bool parser_parse_cmp(Parser *parser, AstExpression *out);
 bool parser_parse_term(Parser *parser, AstExpression *out);
+bool parser_parse_factor(Parser *parser, AstExpression *out);
+// bool parser_parse_unary(Parser *parser, AstExpression *out);
 bool parser_parse_primary(Parser *parser, AstExpression *out);
 
 bool parser_parse_statement(Parser *parser, AstStatement *out);

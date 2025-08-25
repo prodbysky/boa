@@ -70,8 +70,7 @@ bool parser_parse(Parser *parser, AstRoot *out) {
 bool parser_parse_block(Parser *parser, AstBlock *out) {
     if (!parser_expect_and_skip(parser, TT_OPEN_CURLY)) {
         log_diagnostic(LL_ERROR, "Expected a `{` to begin a block");
-        report_error(parser->last_token.begin,
-                     parser->origin.src.items, parser->origin.name);
+        report_error(parser->last_token.begin, parser->origin.src.items, parser->origin.name);
         return false;
     }
     while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_CLOSE_CURLY) {
@@ -81,8 +80,7 @@ bool parser_parse_block(Parser *parser, AstBlock *out) {
     }
     if (parser_is_empty(parser)) {
         log_diagnostic(LL_ERROR, "Expected a `}` to end a block");
-        report_error(parser->last_token.begin,
-                     parser->origin.src.items, parser->origin.name);
+        report_error(parser->last_token.begin, parser->origin.src.items, parser->origin.name);
         return false;
     }
     // we can ignore this return value, since the other only condition has been checked
@@ -126,13 +124,12 @@ bool parser_expect_and_skip(Parser *parser, TokenType type) {
     return false;
 }
 
-bool parser_parse_expr(Parser *parser, AstExpression *out) { return parser_parse_term(parser, out); }
+bool parser_parse_expr(Parser *parser, AstExpression *out) { return parser_parse_eq(parser, out); }
 
 bool parser_parse_primary(Parser *parser, AstExpression *out) {
     if (parser_is_empty(parser)) {
         log_diagnostic(LL_ERROR, "Expected an expression to be here");
-        report_error(parser->last_token.begin,
-                     parser->origin.src.items, parser->origin.name);
+        report_error(parser->last_token.begin, parser->origin.src.items, parser->origin.name);
         return false;
     }
     Token t = parser_pop(parser);
@@ -157,8 +154,7 @@ bool parser_parse_primary(Parser *parser, AstExpression *out) {
             }
             if (!parser_expect_and_skip(parser, TT_CLOSE_PAREN)) {
                 log_diagnostic(LL_ERROR, "Argument list wasn't terminated with a `)`");
-                report_error(parser->last_token.begin,
-                             parser->origin.src.items, parser->origin.name);
+                report_error(parser->last_token.begin, parser->origin.src.items, parser->origin.name);
                 return false;
             }
             out->len = closing_paren.begin + 1 - t.begin;
@@ -176,8 +172,7 @@ bool parser_parse_primary(Parser *parser, AstExpression *out) {
         while (!parser_is_empty(parser) && parser_peek(parser, 0).type != TT_DOUBLE_QUOTE) parser_pop(parser);
         if (parser_is_empty(parser)) {
             log_diagnostic(LL_ERROR, "Unterminated string literal");
-            report_error(parser->last_token.begin,
-                         parser->origin.src.items, parser->origin.name);
+            report_error(parser->last_token.begin, parser->origin.src.items, parser->origin.name);
             return false;
         }
         parser_pop(parser);
@@ -190,18 +185,75 @@ bool parser_parse_primary(Parser *parser, AstExpression *out) {
     }
     default: {
         log_diagnostic(LL_ERROR, "Expected an expression to be here");
-        report_error(parser->last_token.begin,
-                     parser->origin.src.items, parser->origin.name);
+        report_error(parser->last_token.begin, parser->origin.src.items, parser->origin.name);
         return false;
     }
     }
     return true;
 }
+
+bool parser_parse_cmp(Parser *parser, AstExpression *out) {
+    if (parser_is_empty(parser)) {
+        log_diagnostic(LL_ERROR, "Expected an expression to be here");
+        report_error(parser->last_token.begin, parser->origin.src.items, parser->origin.name);
+        return false;
+    }
+
+    if (!parser_parse_term(parser, out)) return false;
+
+    while (!parser_is_empty(parser) && parser_peek(parser, 0).type == TT_OPERATOR &&
+           (parser_peek(parser, 0).operator== OT_LT || parser_peek(parser, 0).operator== OT_MT)) {
+
+        Token op = parser_pop(parser);
+
+        AstExpression *lhs = arena_alloc(parser->arena, sizeof(AstExpression));
+        *lhs = *out;
+
+        AstExpression *rhs = arena_alloc(parser->arena, sizeof(AstExpression));
+        if (!parser_parse_term(parser, rhs)) return false;
+
+        out->type = AET_BINARY;
+        out->len = (rhs->begin + rhs->len) - lhs->begin;
+        out->bin.op = op.operator;
+        out->bin.l = lhs;
+        out->bin.r = rhs;
+    }
+    return true;
+}
+
+bool parser_parse_eq(Parser *parser, AstExpression *out) {
+    if (parser_is_empty(parser)) {
+        log_diagnostic(LL_ERROR, "Expected an expression to be here");
+        report_error(parser->last_token.begin, parser->origin.src.items, parser->origin.name);
+        return false;
+    }
+
+    if (!parser_parse_cmp(parser, out)) return false;
+
+    while (!parser_is_empty(parser) && parser_peek(parser, 0).type == TT_OPERATOR &&
+           (parser_peek(parser, 0).operator== OT_EQ || parser_peek(parser, 0).operator== OT_NEQ)) {
+
+        Token op = parser_pop(parser);
+
+        AstExpression *lhs = arena_alloc(parser->arena, sizeof(AstExpression));
+        *lhs = *out;
+
+        AstExpression *rhs = arena_alloc(parser->arena, sizeof(AstExpression));
+        if (!parser_parse_cmp(parser, rhs)) return false;
+
+        out->type = AET_BINARY;
+        out->len = (rhs->begin + rhs->len) - lhs->begin;
+        out->bin.op = op.operator;
+        out->bin.l = lhs;
+        out->bin.r = rhs;
+    }
+    return true;
+}
+
 bool parser_parse_factor(Parser *parser, AstExpression *out) {
     if (parser_is_empty(parser)) {
         log_diagnostic(LL_ERROR, "Expected an expression to be here");
-        report_error(parser->last_token.begin,
-                     parser->origin.src.items, parser->origin.name);
+        report_error(parser->last_token.begin, parser->origin.src.items, parser->origin.name);
         return false;
     }
 
@@ -229,8 +281,7 @@ bool parser_parse_factor(Parser *parser, AstExpression *out) {
 bool parser_parse_term(Parser *parser, AstExpression *out) {
     if (parser_is_empty(parser)) {
         log_diagnostic(LL_ERROR, "Expected an expression to be here");
-        report_error(parser->last_token.begin,
-                     parser->origin.src.items, parser->origin.name);
+        report_error(parser->last_token.begin, parser->origin.src.items, parser->origin.name);
         return false;
     }
 
@@ -267,8 +318,7 @@ bool parser_parse_statement(Parser *parser, AstStatement *out) {
         case KT_RETURN: {
             if (parser_is_empty(parser)) {
                 log_diagnostic(LL_ERROR, "Expected a semicolon or an expression here not EOF");
-                report_error(parser->last_token.begin,
-                             parser->origin.src.items, parser->origin.name);
+                report_error(parser->last_token.begin, parser->origin.src.items, parser->origin.name);
                 return false;
             }
             out->type = AST_RETURN;
@@ -290,14 +340,12 @@ bool parser_parse_statement(Parser *parser, AstStatement *out) {
         case KT_LET: {
             if (!parser_expect_ident(parser, &out->let.name)) {
                 log_diagnostic(LL_ERROR, "Expected a name for a variable definition here");
-                report_error(parser->last_token.begin,
-                             parser->origin.src.items, parser->origin.name);
+                report_error(parser->last_token.begin, parser->origin.src.items, parser->origin.name);
                 return false;
             }
             if (!parser_expect_and_skip(parser, TT_ASSIGN)) {
                 log_diagnostic(LL_ERROR, "Expected `=` here after the name of the let binding");
-                report_error(parser->last_token.begin,
-                             parser->origin.src.items, parser->origin.name);
+                report_error(parser->last_token.begin, parser->origin.src.items, parser->origin.name);
                 return false;
             }
 
@@ -332,8 +380,7 @@ bool parser_parse_statement(Parser *parser, AstStatement *out) {
             out->type = AST_ASM;
             if (!parser_expect_and_skip(parser, TT_OPEN_PAREN)) {
                 log_diagnostic(LL_ERROR, "Expected `(` to denote the beginning of the asm statement");
-                report_error(parser->last_token.begin,
-                             parser->origin.src.items, parser->origin.name);
+                report_error(parser->last_token.begin, parser->origin.src.items, parser->origin.name);
                 return false;
             }
             const char *begin = parser->last_token.begin + 1;
@@ -364,16 +411,14 @@ bool parser_parse_statement(Parser *parser, AstStatement *out) {
             }
             if (!parser_expect_and_skip(parser, TT_CLOSE_PAREN)) {
                 log_diagnostic(LL_ERROR, "Argument list wasn't terminated with a `)`");
-                report_error(parser->last_token.begin,
-                             parser->origin.src.items, parser->origin.name);
+                report_error(parser->last_token.begin, parser->origin.src.items, parser->origin.name);
                 return false;
             }
             break;
         }
         default: {
             log_diagnostic(LL_ERROR, "Expected `=` after this identifier");
-            report_error(parser->last_token.begin,
-                         parser->origin.src.items, parser->origin.name);
+            report_error(parser->last_token.begin, parser->origin.src.items, parser->origin.name);
             return false;
         }
         }
@@ -381,8 +426,7 @@ bool parser_parse_statement(Parser *parser, AstStatement *out) {
 
     if (parser_is_empty(parser) || parser_peek(parser, 0).type != TT_SEMICOLON) {
         log_diagnostic(LL_ERROR, "Expected a semicolon here");
-        report_error(parser->last_token.begin,
-                     parser->origin.src.items, parser->origin.name);
+        report_error(parser->last_token.begin, parser->origin.src.items, parser->origin.name);
         return false;
     }
     parser_pop(parser);
