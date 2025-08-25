@@ -202,7 +202,11 @@ bool parser_parse_cmp(Parser *parser, AstExpression *out) {
     if (!parser_parse_term(parser, out)) return false;
 
     while (!parser_is_empty(parser) && parser_peek(parser, 0).type == TT_OPERATOR &&
-           (parser_peek(parser, 0).operator== OT_LT || parser_peek(parser, 0).operator== OT_MT)) {
+           (parser_peek(parser, 0)
+                .operator== OT_LT || parser_peek(parser, 0)
+                .operator== OT_MT || parser_peek(parser, 0)
+                .operator== OT_LTE || parser_peek(parser, 0)
+                .operator== OT_MTE)) {
 
         Token op = parser_pop(parser);
 
