@@ -12,6 +12,8 @@ static void emit_add(FILE *sink, const Statement *st);
 static void emit_sub(FILE *sink, const Statement *st);
 static void emit_imul(FILE *sink, const Statement *st);
 static void emit_div(FILE *sink, const Statement *st);
+static void emit_cmp_lt(FILE *sink, const Statement *st);
+static void emit_cmp_mt(FILE *sink, const Statement *st);
 static void emit_assign(FILE *sink, const Statement *st);
 static void emit_call(FILE *sink, const Statement *st);
 
@@ -187,6 +189,27 @@ static void emit_div(FILE *sink, const Statement *st) {
     move_value_into_register(sink, "rcx", &st->binop.r);
     fprintf(sink, "  div rcx\n");
     fprintf(sink, "  mov qword [rbp - %ld], rax\n", (st->binop.result.temp + 1) * 8);
+}
+
+static void emit_cmp_lt(FILE *sink, const Statement *st) {
+    move_value_into_register(sink, "r9", &st->binop.l);
+    move_value_into_register(sink, "r10", &st->binop.r);
+    fprintf(sink, "  cmp r9, r10\n");
+    fprintf(sink, "  setl al\n");
+    fprintf(sink, "  movzx rax, al\n");
+    fprintf(sink, "  mov ");
+    value_asm_repr(sink, &st->binop.result);
+    fprintf(sink, ", rax");
+}
+static void emit_cmp_mt(FILE *sink, const Statement *st) {
+    move_value_into_register(sink, "r9", &st->binop.l);
+    move_value_into_register(sink, "r10", &st->binop.r);
+    fprintf(sink, "  cmp r9, r10\n");
+    fprintf(sink, "  setg al\n");
+    fprintf(sink, "  movzx rax, al\n");
+    fprintf(sink, "  mov ");
+    value_asm_repr(sink, &st->binop.result);
+    fprintf(sink, ", rax");
 }
 
 static void emit_assign(FILE *sink, const Statement *st) {
