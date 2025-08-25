@@ -33,6 +33,8 @@ typedef enum {
     OT_MINUS,
     OT_MULT,
     OT_DIV,
+    OT_LT,
+    OT_MT,
 } OperatorType;
 
 typedef enum {

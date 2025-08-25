@@ -1,17 +1,13 @@
 #include "lexer.h"
 #include "../log.h"
 #include "../util.h"
-#include <ctype.h> 
-#include <stdio.h> 
+#include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 static const OperatorType char_to_op[] = {
-    ['+'] = OT_PLUS,
-    ['-'] = OT_MINUS,
-    ['*'] = OT_MULT,
-    ['/'] = OT_DIV,
-};
+    ['+'] = OT_PLUS, ['-'] = OT_MINUS, ['*'] = OT_MULT, ['/'] = OT_DIV, ['<'] = OT_LT, ['>'] = OT_MT,};
 
 static void lex_single_char(Lexer *lexer, Tokens *out, TokenType new) {
     Token t = {.len = 1, .begin = lexer->file.src.items, .type = new};
@@ -45,7 +41,9 @@ bool lexer_run(Lexer *lexer, Tokens *out) {
         case '+':
         case '-':
         case '*':
-        case '/': {
+        case '/':
+        case '<':
+        case '>': {
             Token t = {0};
             t.type = TT_OPERATOR;
             t.len = 1;
