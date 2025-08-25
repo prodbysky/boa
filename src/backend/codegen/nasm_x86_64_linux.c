@@ -71,52 +71,64 @@ static bool generate_nasm_function(FILE *sink, const Function *func) {
 static bool generate_nasm_statement(FILE *sink, const Statement *st) {
     switch (st->type) {
     case ST_RETURN: {
+        fprintf(sink, "; return something\n");
         emit_return_some(sink, st);
         return true;
     }
     case ST_RETURN_EMPTY: {
+        fprintf(sink, "; return nothing\n");
         emit_return_none(sink, st);
         return true;
     }
     case ST_ADD: {
+        fprintf(sink, "; add\n");
         emit_add(sink, st);
         return true;
     }
     case ST_SUB: {
+        fprintf(sink, "; sub\n");
         emit_sub(sink, st);
         return true;
     }
     case ST_MUL: {
+        fprintf(sink, "; mul\n");
         emit_imul(sink, st);
         return true;
     }
     case ST_DIV: {
+        fprintf(sink, "; div\n");
         emit_div(sink, st);
         return true;
     }
     case ST_ASSIGN: {
+        fprintf(sink, "; assign\n");
         emit_assign(sink, st);
         return true;
     }
     case ST_CALL: {
+        fprintf(sink, "; call\n");
         emit_call(sink, st);
         return true;
     }
     case ST_LABEL: {
+        fprintf(sink, "; label\n");
         fprintf(sink, "  .l%zu:\n", st->label);
         return true;
     }
     case ST_JZ: {
+        fprintf(sink, "; jz\n");
         move_value_into_register(sink, "rax", &st->jz.cond);
         fprintf(sink, "  cmp rax, 0\n");
         fprintf(sink, "  jz .l%zu\n", st->jz.to);
         return true;
     }
     case ST_JMP: {
+        fprintf(sink, "; jmp\n");
         fprintf(sink, "  jmp .l%zu\n", st->jmp);
         return true;
     }
     case ST_ASM: {
+        fprintf(sink, "; asm\n");
         fprintf(sink, STR_FMT "\n", STR_ARG(st->asm));
         return true;
     }
