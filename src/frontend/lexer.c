@@ -88,6 +88,7 @@ bool lexer_run(Lexer *lexer, Tokens *out) {
         case '<': {
             lexer_consume(lexer);
             Token t = {0};
+            t.type = TT_OPERATOR;
             if (!lexer_is_empty(lexer) && lexer_peek(lexer, 0) == '=') {
                 t.len = 2;
                 t.begin = lexer->file.src.items;
@@ -99,11 +100,13 @@ bool lexer_run(Lexer *lexer, Tokens *out) {
                 t.operator= OT_LT;
             }
             da_push(out, t, lexer->arena);
+
             continue;
         }
         case '!': {
             lexer_consume(lexer);
             Token t = {0};
+            t.type = TT_OPERATOR;
             if (!lexer_is_empty(lexer) && lexer_peek(lexer, 0) == '=') {
                 t.len = 2;
                 t.begin = lexer->file.src.items;
