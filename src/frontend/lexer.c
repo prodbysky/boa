@@ -46,57 +46,56 @@ bool lexer_run(Lexer *lexer, Tokens *out) {
         // TODO: Lex string literals as a token
         case '"': lex_single_char(lexer, out, TT_DOUBLE_QUOTE); continue;
         case '+': {
-            lexer_consume(lexer);
             Token t = {0};
+            t.begin = lexer->file.src.items;
             t.type = TT_OPERATOR;
             t.len = 1;
-            t.begin = lexer->file.src.items;
             t.operator= OT_PLUS;
+            lexer_consume(lexer);
             da_push(out, t, lexer->arena);
             continue;
         }
         case '-': {
-            lexer_consume(lexer);
             Token t = {0};
             t.type = TT_OPERATOR;
             t.len = 1;
             t.begin = lexer->file.src.items;
             t.operator= OT_MINUS;
+            lexer_consume(lexer);
             da_push(out, t, lexer->arena);
             continue;
         }
         case '*': {
-            lexer_consume(lexer);
             Token t = {0};
             t.type = TT_OPERATOR;
             t.len = 1;
             t.begin = lexer->file.src.items;
             t.operator= OT_MULT;
+            lexer_consume(lexer);
             da_push(out, t, lexer->arena);
             continue;
         }
         case '/': {
-            lexer_consume(lexer);
             Token t = {0};
             t.type = TT_OPERATOR;
             t.len = 1;
             t.begin = lexer->file.src.items;
             t.operator= OT_DIV;
+            lexer_consume(lexer);
             da_push(out, t, lexer->arena);
             continue;
         }
         case '<': {
-            lexer_consume(lexer);
             Token t = {0};
             t.type = TT_OPERATOR;
+            t.begin = lexer->file.src.items;
+            lexer_consume(lexer);
             if (!lexer_is_empty(lexer) && lexer_peek(lexer, 0) == '=') {
                 t.len = 2;
-                t.begin = lexer->file.src.items;
                 t.operator= OT_LTE;
                 lexer_consume(lexer);
             } else {
                 t.len = 1;
-                t.begin = lexer->file.src.items;
                 t.operator= OT_LT;
             }
             da_push(out, t, lexer->arena);
@@ -104,12 +103,12 @@ bool lexer_run(Lexer *lexer, Tokens *out) {
             continue;
         }
         case '!': {
-            lexer_consume(lexer);
             Token t = {0};
             t.type = TT_OPERATOR;
+            t.begin = lexer->file.src.items;
+            lexer_consume(lexer);
             if (!lexer_is_empty(lexer) && lexer_peek(lexer, 0) == '=') {
                 t.len = 2;
-                t.begin = lexer->file.src.items;
                 t.operator= OT_NEQ;
                 lexer_consume(lexer);
             } else {
@@ -121,35 +120,33 @@ bool lexer_run(Lexer *lexer, Tokens *out) {
             continue;
         }
         case '>': {
-            lexer_consume(lexer);
             Token t = {0};
             t.type = TT_OPERATOR;
+            t.begin = lexer->file.src.items;
+            lexer_consume(lexer);
             if (!lexer_is_empty(lexer) && lexer_peek(lexer, 0) == '=') {
                 t.len = 2;
-                t.begin = lexer->file.src.items;
                 t.operator= OT_MTE;
                 lexer_consume(lexer);
             } else {
                 t.len = 1;
-                t.begin = lexer->file.src.items;
                 t.operator= OT_MT;
             }
             da_push(out, t, lexer->arena);
             continue;
         }
         case '=': {
-            lexer_consume(lexer);
             Token t = {0};
+            t.type = TT_OPERATOR;
+            t.begin = lexer->file.src.items;
+            lexer_consume(lexer);
             if (!lexer_is_empty(lexer) && lexer_peek(lexer, 0) == '=') {
-                t.type = TT_OPERATOR;
                 t.len = 2;
-                t.begin = lexer->file.src.items;
                 t.operator= OT_EQ;
                 lexer_consume(lexer);
             } else {
                 t.type = TT_ASSIGN;
                 t.len = 1;
-                t.begin = lexer->file.src.items;
             }
             da_push(out, t, lexer->arena);
             continue;
